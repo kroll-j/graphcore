@@ -293,7 +293,7 @@ class Digraph
 		set<uint32_t> circleSet;
 		vector<uint32_t> resultNodes;
 
-/*
+		// tiefensuche -- funktioniert so nicht mit tiefenbeschränkung!
 		void findNeighbors(uint32_t node, int depth, int curDepth= 1)
 		{
 			arcContainer::iterator it;
@@ -315,7 +315,7 @@ class Digraph
 					findNeighbors(it->tail, depth, curDepth+1);
 			}
 		}
-*/
+
 
 		class NeighbourIterator
 		{
@@ -493,7 +493,11 @@ class Cli
 				if(inRedir) fclose(inRedir), inRedir= 0;
 				if(outRedir) fclose(outRedir), outRedir= 0;
 				printf("> ");
-				if(getline(&command, &nchars, stdin)==-1) { cmdFail("i/o error"); continue; }
+				if(getline(&command, &nchars, stdin)==-1)
+				{
+					if(feof(stdin)) return;
+					cmdFail("i/o error"); continue;
+				}
 				char *d= strchr(command, '>');
 				if(d)
 				{
