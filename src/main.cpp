@@ -103,7 +103,7 @@ class Digraph
 
 			printf("done in %fs\n", getTime()-d);
 		}
-
+/*
 		void listDescendants(uint32_t node, int depth, int curDepth= 0)
 		{
 			arcContainer::iterator start= findArcByTail(node), it;
@@ -115,7 +115,7 @@ class Digraph
 				{
 //					printf("%*s%d -> %d\n", curDepth, "", it->tail, it->head);
 					if(it->head==it->tail) continue;
-					if(circleSet.find(it->head)!=circleSet.end()) { /*printf("circle found\n");*/ continue; }
+					if(circleSet.find(it->head)!=circleSet.end()) { printf("circle found\n"); continue; }
 					circleSet.insert(it->head);
 					listDescendants(it->head, depth, curDepth+1);
 				}
@@ -132,11 +132,12 @@ class Digraph
 				{
 //					printf("%*s%d <- %d\n", curDepth, "", it->head, it->tail);
 					if(it->head==it->tail) continue;
-					if(circleSet.find(it->tail)!=circleSet.end()) { /*printf("circle found\n");*/ continue; }
+					if(circleSet.find(it->tail)!=circleSet.end()) { printf("circle found\n"); continue; }
 					circleSet.insert(it->tail);
 					listPredecessors(it->tail, depth, curDepth+1);
 				}
 		}
+*/
 /*
 		void printNeighbors(uint32_t node, int depth)
 		{
@@ -315,29 +316,6 @@ class Digraph
 			}
 		}
 */
-		///////////////// obere version funktioniert nicht, circleproblem.txt
-		/////////////////
-		void findNeighbors(uint32_t node, int depth, int curDepth= 1)
-		{
-			arcContainer::iterator it;
-
-			circleSet.insert(it->head);
-			resultNodes.push_back(it->head);
-
-			for(it= findArcByTail(node); it!=arcsByTail.end() && it->tail==node; it++)
-			{
-				if(circleSet.find(it->head)!=circleSet.end()) continue;
-				if(curDepth<depth)
-					findNeighbors(it->head, depth, curDepth+1);
-			}
-
-			for(it= findArcByHead(node); it!=arcsByHead.end() && it->head==node; it++)
-			{
-				if(circleSet.find(it->tail)!=circleSet.end()) continue;
-				if(curDepth<depth)
-					findNeighbors(it->tail, depth, curDepth+1);
-			}
-		}
 
 		class NeighbourIterator
 		{
