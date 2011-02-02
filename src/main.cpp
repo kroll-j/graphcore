@@ -1,3 +1,5 @@
+// Graph Processor test code. (c) 2011 Johannes Kroll
+// For testing purposes only. Not to be used in production environment. Not to be published.
 #include <string.h>
 #include <stdarg.h>
 #include <iostream>
@@ -200,7 +202,7 @@ class Digraph
 
 		void listArcsByTail()
 		{
-			for(uint32_t i= 0; i<arcsByTail.size(); i++)
+			for(uint32_t i= 0; i<20 && i<arcsByTail.size(); i++)
 				printf("%d -> %d\n", arcsByTail[i].tail, arcsByTail[i].head);
 		}
 
@@ -216,13 +218,13 @@ class Digraph
 
 		void printNeighbors(uint32_t node, int depth)
 		{
-			printf("finding neighbours...\n");
+			printf("finding neighbors...\n");
 			double d= getTime();
 			const vector<uint32_t>& result= getNeighbors(node, depth);
 			d= getTime()-d;
 			fprintf(stderr, "GET time: %f\n", d);
 
-			printf("printing neighbours...\n");
+			printf("printing neighbors...\n");
 			for(uint32_t i= 0; i<result.size(); i++)
 				printf("%d ", result[i]);
 			puts("");
@@ -253,11 +255,15 @@ class Digraph
 		}
 
 
+		enum BFSType
+		{
+			NEIGHBORS= 0, PREDECESSORS, DESCENDANTS
+		};
 		void doBFS(vector<uint32_t> &resultNodes, map<uint32_t,uint32_t> &niveau,
-				   uint32_t startNode, uint32_t depth)
+				   uint32_t startNode, uint32_t depth, BFSType searchType= NEIGHBORS)
 		{
 			NeighbourIterator it(*this);
-			it.start(startNode);
+			it.startNeighbors(startNode);
 			if(it.finished()) return;	// node does not exist
 			queue<uint32_t> Q;
 			niveau.insert(make_pair(startNode, 0));
@@ -266,11 +272,13 @@ class Digraph
 			while(Q.size())
 			{
 				uint32_t next= Q.front();
-//				printf("next=%d\n", next);
 				uint32_t curNiveau= niveau.find(next)->second;
 				if(curNiveau==depth) break;
 				Q.pop();
-				for(it.start(next); !it.finished(); ++it)
+				if(searchType==PREDECESSORS) it.startPredecessors(next);
+				else if(searchType==DESCENDANTS) it.startDescendants(next);
+				else it.startNeighbors(next);
+				for(; !it.finished(); ++it)
 				{
 					uint32_t neighbour= *it;
 //					printf("neighbour=%d\n", neighbour);
@@ -282,6 +290,16 @@ class Digraph
 					}
 				}
 			}
+		}
+
+		void eraseArc(uint32_t tail, uint32_t head)
+		{
+			arcContainer::iterator it;
+			arc value= (arc) { tail, head };
+			if( (it= lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead))!=arcsByHead.end() )
+				arcsByHead.erase(it);
+			if( (it= lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail))!=arcsByTail.end() )
+				arcsByTail.erase(it);
 		}
 
 
@@ -316,12 +334,11 @@ class Digraph
 			}
 		}
 
-
 		class NeighbourIterator
 		{
 			private:
 				arcContainer::iterator it;
-				bool byHead;
+				bool byHead, switchToDescendants;
 				Digraph &graph;
 				uint32_t startNode;
 				bool isFinished;
@@ -341,10 +358,29 @@ class Digraph
 				bool finished()
 				{ return isFinished; }
 
-				void start(uint32_t startNode)
+				void startNeighbors(uint32_t startNode)
 				{
 					byHead= true;
+					switchToDescendants= true;
 					it= graph.findArcByHead(startNode);
+					this->startNode= startNode;
+					isFinished= checkFinished();
+				}
+
+				void startPredecessors(uint32_t startNode)
+				{
+					byHead= true;
+					switchToDescendants= false;
+					it= graph.findArcByHead(startNode);
+					this->startNode= startNode;
+					isFinished= checkFinished();
+				}
+
+				void startDescendants(uint32_t startNode)
+				{
+					byHead= false;
+					switchToDescendants= false;
+					it= graph.findArcByTail(startNode);
 					this->startNode= startNode;
 					isFinished= checkFinished();
 				}
@@ -354,23 +390,28 @@ class Digraph
 					if(isFinished) return;
 					if(byHead)
 					{
-						it++;
-						if(it==graph.arcsByHead.end() || it->head!=startNode)
+						if(++it==graph.arcsByHead.end() || it->head!=startNode)
 						{
-							it= graph.findArcByTail(startNode);
-							if(it==graph.arcsByTail.end()) isFinished= true;
+							if(!switchToDescendants)
+							{
+								isFinished= true;
+								return;
+							}
+//							puts("switch");
+							if( (it= graph.findArcByTail(startNode))==graph.arcsByTail.end() ||
+								it->tail!=startNode ) isFinished= true;
 							else byHead= false;
 						}
 					}
 					else
 					{
-						if(it!=graph.arcsByTail.end() && it->tail==startNode) it++;
-						if(it==graph.arcsByTail.end() || it->tail!=startNode) isFinished= true;
+						if(++it==graph.arcsByTail.end() || it->tail!=startNode) isFinished= true;
 					}
 				}
 
 				uint32_t operator*()
 				{
+//					printf(" (%u -> %u) \n", it->tail, it->head);
 					if(isFinished) return 0;
 					else return (byHead? it->tail: it->head);
 				}
@@ -384,12 +425,14 @@ class Digraph
 		static bool compByHead(arc a, arc b)
 		{ return (a.head==b.head? a.tail<b.tail: a.head<b.head); }
 
+		// find the position of first arc with given head (lower bound)
 		arcContainer::iterator findArcByHead(uint32_t head)
 		{
 			arc value= { 0, head };
 			return lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead);
 		}
 
+		// find the position of first arc with given tail (lower bound)
 		arcContainer::iterator findArcByTail(uint32_t tail)
 		{
 			arc value= { tail, 0 };
@@ -464,7 +507,7 @@ void readFileTest(Digraph &graph, const char *filename)
 		printf("NODE: %d\n", i);
 //		graph.printNeighbors(i, 1);
 		const vector<uint32_t> &result= graph.getNeighbors(i*97, 10);
-		printf("%d neighbours found\n", result.size());
+		printf("%d neighbors found\n", result.size());
 		d= getTime()-d;
 		fprintf(stderr, "time: %f\n", d);
 	}
@@ -558,24 +601,37 @@ class Cli
 
 			FILE *outFile= (outRedir? outRedir: stdout);
 
-			//c: command: list-node NODE DEPTH
-			//c: search for NODE and its predecessors/successors recursively, to a given DEPTH.
-			//c: print data set of nodes.
+			//c: command: list-neighbors NODE [DEPTH]
+			//c: 	print data set of predecessors/successors of NODE.
+			//c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
 			//c:
-			if(words[0]=="list-node")
+			//c: command: list-predecessors NODE DEPTH
+			//c: 	print data set of predecessors of NODE.
+			//c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
+			//c:
+			//c: command: list-successors NODE DEPTH
+			//c: 	print data set of successors of NODE.
+			//c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
+			//c:
+			if(words[0]=="list-neighbors" || words[0]=="list-predecessors" || words[0]=="list-successors")
 			{
-				if(words.size()!=3 || hasDataSet) { cmdFail("syntax error"); return; }
+				if( (words.size()!=3&&words.size()!=2) || hasDataSet) { cmdFail("syntax error"); return; }
 				double d= getTime();
 				vector<uint32_t> resultNodes;
 				map<uint32_t,uint32_t> nodeNiveau;
-				myGraph->doBFS(resultNodes, nodeNiveau, parseUint(words[1]), parseUint(words[2]));
-				cmdOk("%d nodes, %fs:", resultNodes.size(), getTime()-d);
-				for(uint32_t i= 0; i<resultNodes.size(); i++)
+				myGraph->doBFS(resultNodes, nodeNiveau, parseUint(words[1]), (words.size()==3? parseUint(words[2]): 1),
+							   (words[0].find("neighbors")!=string::npos? Digraph::NEIGHBORS:
+								words[0].find("predecessors")!=string::npos? Digraph::PREDECESSORS:
+								Digraph::DESCENDANTS) );
+				int begin= (words.size()==3? 0: 1);
+				cmdOk("%d nodes, %fs:", (int)resultNodes.size()-begin>=0? resultNodes.size()-begin: 0, getTime()-d);
+				for(uint32_t i= begin; i<resultNodes.size(); i++)
 					fprintf(outFile, "%u,%u\n", resultNodes[i], nodeNiveau[resultNodes[i]]);
+//					fprintf(outFile, "%u\n", resultNodes[i]);
 				fprintf(outFile, "\n");
 			}
 			//c: command: add-arcs
-			//c: read a data set of arcs and add them to the graph. empty line terminates the set.
+			//c: 	read a data set of arcs and add them to the graph. empty line terminates the set.
 			//c:
 			else if(words[0]=="add-arcs")
 			{
@@ -585,15 +641,32 @@ class Cli
 				vector<uint32_t> record;
 				while(true)
 				{
-					if(!readRecord(f, record)) { cmdErr("couldn't read data record"); return; }
-					if(record.size()==0) { myGraph->resort(oldSize); myGraph->checkDups(); cmdOk(); return; }
+					if(!readRecord(f, record)) { cmdErr("couldn't read data set"); return; }
+					if(record.size()==0) { myGraph->resort(oldSize); /*myGraph->checkDups();*/ cmdOk(); return; }
 					if(record.size()!=2) { cmdErr("invalid data record"); return; }
 					myGraph->addArc( record[1], record[0], false );
 					record.clear();
 				}
 			}
+			//c: command: erase-arcs
+			//c: 	read a data set of arcs and erase them from the graph. empty line terminates the set.
+			//c:
+			else if(words[0]=="erase-arcs")
+			{
+				if(words.size()!=1 || !(hasDataSet||inRedir) || outRedir) { cmdFail("syntax error"); return; }
+				FILE *f= (inRedir? inRedir: stdin);
+				vector<uint32_t> record;
+				while(true)
+				{
+					if(!readRecord(f, record)) { cmdErr("couldn't read data set"); return; }
+					if(record.size()==0) { cmdOk(); return; }
+					if(record.size()!=2) { cmdErr("invalid data record"); return; }
+					myGraph->eraseArc( record[1], record[0] );
+					record.clear();
+				}
+			}
 			//c: command: clear
-			//c: clear the graph model.
+			//c: 	clear the graph model.
 			//c:
 			else if(words[0]=="clear")
 			{
@@ -601,12 +674,17 @@ class Cli
 				cmdOk();
 			}
 			//c: command: quit
-			//c: quit program.
+			//c: 	quit program.
 			//c:
 			else if(words[0]=="quit")
 			{
 				cmdOk();
 				doQuit= true;
+			}
+			else if(words[0]=="test")
+			{
+				myGraph->listArcsByTail();
+				cmdOk();
 			}
 			else
 			{
@@ -728,7 +806,7 @@ int main()
 		double d= getTime();
 	//	graph.printNeighbors(10, 10);
 		const vector<uint32_t> &result= graph.getNeighbors(10, 7);
-		printf("%d neighbours found\n", result.size());
+		printf("%d neighbors found\n", result.size());
 		d= getTime()-d;
 		fprintf(stderr, "time: %f\n", d);
 	}
