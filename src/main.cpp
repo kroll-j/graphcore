@@ -31,8 +31,10 @@ class Digraph
 		struct arc
 		{
 			uint32_t tail, head;
-//			bool operator< (arc a) const
-//			{ return (a.tail==tail? a.head<head: a.tail<tail); }
+			bool operator< (arc a) const
+			{ return (a.tail==tail? a.head<head: a.tail<tail); }
+			bool operator== (arc a) const
+			{ return (a.tail==tail && a.head==head); }
 		};
 
 		Digraph()
@@ -47,9 +49,7 @@ class Digraph
 		{
 			arcsByHead.push_back(a);
 			arcsByTail.push_back(a);
-			if(doSort)
-				sort(arcsByTail.begin(), arcsByTail.end(), compByTail),
-				sort(arcsByHead.begin(), arcsByHead.end(), compByHead);
+			if(doSort) resort(arcsByHead.size()-1);
 		}
 
 		void addArc(uint32_t tail, uint32_t head, bool doSort= true)
@@ -230,11 +230,6 @@ class Digraph
 			puts("");
 		}
 
-		void insertionTest()
-		{
-
-		}
-
 
 		void clear()
 		{
@@ -262,7 +257,7 @@ class Digraph
 		void doBFS(vector<uint32_t> &resultNodes, map<uint32_t,uint32_t> &niveau,
 				   uint32_t startNode, uint32_t depth, BFSType searchType= NEIGHBORS)
 		{
-			NeighbourIterator it(*this);
+			NeighborIterator it(*this);
 			it.startNeighbors(startNode);
 			if(it.finished()) return;	// node does not exist
 			queue<uint32_t> Q;
@@ -280,13 +275,13 @@ class Digraph
 				else it.startNeighbors(next);
 				for(; !it.finished(); ++it)
 				{
-					uint32_t neighbour= *it;
-//					printf("neighbour=%d\n", neighbour);
-					if(niveau.find(neighbour)==niveau.end())
+					uint32_t neighbor= *it;
+//					printf("neighbor=%d\n", neighbor);
+					if(niveau.find(neighbor)==niveau.end())
 					{
-						niveau.insert(make_pair(neighbour, curNiveau+1));
-						resultNodes.push_back(neighbour);
-						Q.push(neighbour);
+						niveau.insert(make_pair(neighbor, curNiveau+1));
+						resultNodes.push_back(neighbor);
+						Q.push(neighbor);
 					}
 				}
 			}
@@ -296,13 +291,48 @@ class Digraph
 		{
 			arcContainer::iterator it;
 			arc value= (arc) { tail, head };
-			if( (it= lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead))!=arcsByHead.end() )
+			if( (it= lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead))!=arcsByHead.end() &&
+				*it==value )
 				arcsByHead.erase(it);
-			if( (it= lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail))!=arcsByTail.end() )
+			if( (it= lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail))!=arcsByTail.end() &&
+				*it==value )
 				arcsByTail.erase(it);
 		}
 
-
+		bool replacePredecessors(uint32_t node, vector<uint32_t> newPredecessors)
+		{
+			NeighborIterator it(*this);
+			it.startPredecessors(node);
+			stable_sort(newPredecessors.begin(), newPredecessors.end());
+			vector<uint32_t>::iterator p= newPredecessors.begin();
+			for(; !it.finished() && p!=newPredecessors.end(); ++it, ++p)
+				// replace arcs
+				it.getArc().tail= *p;
+			if(!it.finished())
+			{
+				// remove the rest
+				for(; !it.checkFinished(); )
+				{
+					arcContainer::iterator f= lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail);
+					if(f==arcsByTail.end() || !(*f==it.getArc()))
+					{
+						printf("arc %d -> %d not found?!\n", it.getArc().tail, it.getArc().head);
+						return false;
+					}
+					arcsByTail.erase(f);
+					arcsByHead.erase(it.getIterator());
+				}
+			}
+			else if(p!=newPredecessors.end())
+			{
+				// add new ones and resort
+				int oldSize= arcsByHead.size();
+				for(; p!=newPredecessors.end(); p++)
+					addArc(*p, node, false);
+				resort(oldSize);
+			}
+			return true;
+		}
 
 
 	private:
@@ -334,7 +364,7 @@ class Digraph
 			}
 		}
 
-		class NeighbourIterator
+		class NeighborIterator
 		{
 			private:
 				arcContainer::iterator it;
@@ -342,18 +372,19 @@ class Digraph
 				Digraph &graph;
 				uint32_t startNode;
 				bool isFinished;
+
+			public:
+				NeighborIterator(Digraph &g): graph(g)
+				{ }
+
 				bool checkFinished()
 				{
-					if( (byHead==false && (it==graph.arcsByTail.end() || it->tail!=startNode)) ||
-						(byHead==true && (it==graph.arcsByHead.end() || it->head!=startNode)) )
+					if( (byHead==true && (it==graph.arcsByHead.end() || it->head!=startNode)) ||
+						(byHead==false && (it==graph.arcsByTail.end() || it->tail!=startNode)) )
 						return true;
 					else
 						return false;
 				}
-
-			public:
-				NeighbourIterator(Digraph &g): graph(g)
-				{ }
 
 				bool finished()
 				{ return isFinished; }
@@ -415,8 +446,19 @@ class Digraph
 					if(isFinished) return 0;
 					else return (byHead? it->tail: it->head);
 				}
+
+				arc &getArc()
+				{
+					if(isFinished) return graph.arcsByHead[0];
+					return *it;
+				}
+
+				arcContainer::iterator getIterator()
+				{
+					return it;
+				}
 		};
-		friend class NeighbourIterator;
+		friend class NeighborIterator;
 
 
 		static bool compByTail(arc a, arc b)
@@ -602,14 +644,14 @@ class Cli
 			FILE *outFile= (outRedir? outRedir: stdout);
 
 			//c: command: list-neighbors NODE [DEPTH]
-			//c: 	print data set of predecessors/successors of NODE.
+			//c: 	print data set of predecessors and successors of NODE.
 			//c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
 			//c:
-			//c: command: list-predecessors NODE DEPTH
+			//c: command: list-predecessors NODE [DEPTH]
 			//c: 	print data set of predecessors of NODE.
 			//c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
 			//c:
-			//c: command: list-successors NODE DEPTH
+			//c: command: list-successors NODE [DEPTH]
 			//c: 	print data set of successors of NODE.
 			//c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
 			//c:
@@ -665,6 +707,26 @@ class Cli
 					record.clear();
 				}
 			}
+			//c: command: replace-predecessors NODE
+			//c: 	read data set of nodes, replace predecessors of NODE with given set.
+			//c:
+			else if(words[0]=="replace-predecessors")
+			{
+				if(words.size()!=2 || !(hasDataSet||inRedir) || outRedir) { cmdFail("syntax error"); return; }
+				FILE *f= (inRedir? inRedir: stdin);
+				vector<uint32_t> record, newPredecessors;
+				while(true)
+				{
+					if(!readRecord(f, record)) { cmdErr("couldn't read data set"); return; }
+					printf("size: %d\n", record.size());
+					if(record.size()==0) { /*myGraph->checkDups();*/ break; }
+					if(record.size()!=1) { cmdErr("invalid data record"); return; }
+					newPredecessors.push_back(record[0]);
+					record.clear();
+				}
+				myGraph->replacePredecessors(parseUint(words[1]), newPredecessors);
+				cmdOk();
+			}
 			//c: command: clear
 			//c: 	clear the graph model.
 			//c:
@@ -674,9 +736,10 @@ class Cli
 				cmdOk();
 			}
 			//c: command: quit
+			//c: command: q
 			//c: 	quit program.
 			//c:
-			else if(words[0]=="quit")
+			else if(words[0]=="quit" || words[0]=="q")
 			{
 				cmdOk();
 				doQuit= true;
@@ -750,10 +813,6 @@ class Cli
 
 };
 
-//Cli::command Cli::commands[]=
-//{
-//	{ 0 }
-//};
 
 
 int main()
