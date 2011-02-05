@@ -476,7 +476,6 @@ class Digraph
 								isFinished= true;
 								return;
 							}
-//							puts("switch");
 							if( (it= graph.findArcByTail(startNode))==graph.arcsByTail.end() ||
 								it->tail!=startNode ) isFinished= true;
 							else byHead= false;
@@ -485,12 +484,11 @@ class Digraph
 					else
 					{
 						if(++it==graph.arcsByTail.end() || it->tail!=startNode) isFinished= true;
-					}
+                    }
 				}
 
 				uint32_t operator*()
 				{
-//					printf(" (%u -> %u) \n", it->tail, it->head);
 					if(isFinished) return 0;
 					else return (byHead? it->tail: it->head);
 				}
