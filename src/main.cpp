@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 using namespace std;
 
@@ -383,6 +385,12 @@ class Digraph
 		}
 
 
+		void printStats()
+		{
+
+		}
+
+
 	private:
 		typedef vector<arc> arcContainer;
 		arcContainer arcsByTail, arcsByHead;
@@ -556,6 +564,7 @@ class Digraph
 };
 
 
+/*
 void readFileTest(Digraph &graph, const char *filename)
 {
 	FILE *f= fopen(filename, "r");
@@ -600,7 +609,7 @@ void readFileTest(Digraph &graph, const char *filename)
 		fprintf(stderr, "time: %f\n", d);
 	}
 }
-
+*/
 
 class Cli
 {
@@ -616,19 +625,25 @@ class Cli
 		void run()
 		{
 			char *command= 0;
+//            char command[1024];
 			size_t nchars= 0;
-			FILE *inRedir, *outRedir;
+			FILE *inRedir= 0, *outRedir= 0;
 			bool commandHasDataSet;
 			while(!doQuit)
 			{
 				if(inRedir) fclose(inRedir), inRedir= 0;
 				if(outRedir) fclose(outRedir), outRedir= 0;
-				printf("> ");
-				if(getline(&command, &nchars, stdin)==-1)
-				{
-					if(feof(stdin)) return;
-					cmdFail("i/o error"); continue;
-				}
+//				printf("> ");
+//				if(getline(&command, &nchars, stdin)==-1)
+//				{
+//					if(feof(stdin)) return;
+//					cmdFail("i/o error"); continue;
+//				}
+//                if(fgets(command, 1024, stdin)==0)
+//                    return;
+                if( (command= readline("> "))==0 ) return;
+//                nchars= strlen(command);
+//                if(nchars&&command[nchars-1]=='\n') command[--nchars]= 0;
 				char *d= strchr(command, '>');
 				if(d)
 				{
@@ -648,7 +663,10 @@ class Cli
 					*d= 0, commandHasDataSet= true;
 				else
 					commandHasDataSet= false;
-				execute(command, commandHasDataSet, inRedir, outRedir);
+                if(strlen(command))
+                    execute(command, commandHasDataSet, inRedir, outRedir),
+                    add_history(command);
+                free(command);
 			}
 		}
 
@@ -794,6 +812,11 @@ class Cli
 				myGraph->listArcsByTail();
 				cmdOk();
 			}
+			else if(words[0]=="stats")
+			{
+				myGraph->printStats();
+				cmdOk();
+			}
 			else
 			{
 				cmdFail("unknown command");
@@ -814,17 +837,23 @@ class Cli
 
 		bool readRecord(FILE *f, vector<uint32_t> &ret)
 		{
-			char *line= 0;
-			uint32_t n= 0;
-			if(getline(&line, &n, f)==-1)
-			{
+			char line[1024];
+			uint32_t n;
+//			if(getline(&line, &n, f)==-1)
+//			{
+//				if(!feof(f)) return false;
+//				else return true;
+//			}
+            if(fgets(line, 1024, f)==0)
+            {
 				if(!feof(f)) return false;
 				else return true;
 			}
+            if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;
 			vector<string> strings= splitString(line);
 			for(uint32_t i= 0; i<strings.size(); i++)
 				ret.push_back(parseUint(strings[i]));
-			free(line);
+//			free(line);
 			return true;
 		}
 
