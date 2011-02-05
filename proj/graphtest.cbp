@@ -35,6 +35,7 @@
 		</Compiler>
 		<Linker>
 			<Add library="pthread" />
+			<Add library="readline" />
 		</Linker>
 		<Unit filename="../src/main.cpp" />
 		<Extensions>

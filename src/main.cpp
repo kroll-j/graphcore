@@ -387,7 +387,28 @@ class Digraph
 
 		void printStats()
 		{
-
+            printf("%d arcs consuming %dMB of RAM\n", arcsByHead.size(), arcsByHead.size()*sizeof(arc)*2/(1024*1024));
+            bool invalid= false;
+            if(arcsByHead.size()!=arcsByTail.size())
+                printf("array sizes don't match?!! (%d != %d)\n", arcsByHead.size(), arcsByTail.size()),
+                invalid= true;
+            int size= arcsByHead.size();
+            int numDups= 0;
+            uint32_t minNodeID= 0xFFFFFFFF, maxNodeID= 0;
+            for(int i= 0; i<size; i++)
+            {
+                arc &h= arcsByHead[i];
+                if(i<size-1 && h==arcsByHead[i+1])
+                    numDups++, invalid= true;
+                if(h.tail && h.tail<minNodeID) minNodeID= h.tail;
+                if(h.head && h.head<minNodeID) minNodeID= h.head;
+                if(h.tail>maxNodeID) maxNodeID= h.tail;
+                if(h.head>maxNodeID) maxNodeID= h.head;
+            }
+            printf("lowest node ID: %u\ngreatest node ID: %u\n", minNodeID, maxNodeID);
+            if(numDups) printf("%d duplicate arcs found.\n", numDups);
+            if(invalid) puts("Graph data is invalid.");
+            else puts("Graph data looks okay.");
 		}
 
 
@@ -644,6 +665,7 @@ class Cli
                 if( (command= readline("> "))==0 ) return;
 //                nchars= strlen(command);
 //                if(nchars&&command[nchars-1]=='\n') command[--nchars]= 0;
+                char *completeCommand= strdup(command);
 				char *d= strchr(command, '>');
 				if(d)
 				{
@@ -665,8 +687,9 @@ class Cli
 					commandHasDataSet= false;
                 if(strlen(command))
                     execute(command, commandHasDataSet, inRedir, outRedir),
-                    add_history(command);
+                    add_history(completeCommand);
                 free(command);
+                free(completeCommand);
 			}
 		}
 
@@ -812,7 +835,7 @@ class Cli
 				myGraph->listArcsByTail();
 				cmdOk();
 			}
-			else if(words[0]=="stats")
+			else if(words[0]=="print-stats")
 			{
 				myGraph->printStats();
 				cmdOk();
