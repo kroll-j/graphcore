@@ -299,6 +299,7 @@ class Digraph
 				arcsByTail.erase(it);
 		}
 
+/*
 		bool replacePredecessors(uint32_t node, vector<uint32_t> newPredecessors)
 		{
 			NeighborIterator it(*this);
@@ -329,6 +330,53 @@ class Digraph
 				int oldSize= arcsByHead.size();
 				for(; p!=newPredecessors.end(); p++)
 					addArc(*p, node, false);
+				resort(oldSize);
+			}
+			return true;
+		}
+*/
+
+		// replace predecessors (successors=false) or descendants (successors=true) of a node
+		bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
+		{
+			NeighborIterator it(*this);
+			if(successors) it.startDescendants(node);
+			else it.startPredecessors(node);
+			stable_sort(newNeighbors.begin(), newNeighbors.end());
+			vector<uint32_t>::iterator p= newNeighbors.begin();
+			// replace arcs
+			for(; !it.finished() && p!=newNeighbors.end(); ++it, ++p)
+				(successors? it.getArc().head: it.getArc().tail)= *p;
+			if(!it.finished())
+			{
+				// remove the rest
+				for(; !it.checkFinished(); )
+				{
+					arcContainer::iterator f=
+						(successors? lower_bound(arcsByHead.begin(), arcsByHead.end(), it.getArc(), compByHead):
+							lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail));
+					if(f==(successors? arcsByHead.end(): arcsByTail.end()) || !(*f==it.getArc()))
+					{
+						printf("arc %d -> %d not found?!\n", it.getArc().tail, it.getArc().head);
+						return false;
+					}
+					if(successors)
+						arcsByTail.erase(it.getIterator()),
+						arcsByHead.erase(f);
+					else
+						arcsByTail.erase(f),
+						arcsByHead.erase(it.getIterator());
+				}
+			}
+			else if(p!=newNeighbors.end())
+			{
+				// add new ones and resort
+				int oldSize= arcsByHead.size();
+				for(; p!=newNeighbors.end(); p++)
+					if(successors)
+						addArc(node, *p, false);
+					else
+						addArc(*p, node, false);
 				resort(oldSize);
 			}
 			return true;
@@ -710,21 +758,20 @@ class Cli
 			//c: command: replace-predecessors NODE
 			//c: 	read data set of nodes, replace predecessors of NODE with given set.
 			//c:
-			else if(words[0]=="replace-predecessors")
+			else if( words[0]=="replace-predecessors" || words[0]=="replace-successors" )
 			{
 				if(words.size()!=2 || !(hasDataSet||inRedir) || outRedir) { cmdFail("syntax error"); return; }
 				FILE *f= (inRedir? inRedir: stdin);
-				vector<uint32_t> record, newPredecessors;
+				vector<uint32_t> record, newNeighbors;
 				while(true)
 				{
 					if(!readRecord(f, record)) { cmdErr("couldn't read data set"); return; }
-					printf("size: %d\n", record.size());
 					if(record.size()==0) { /*myGraph->checkDups();*/ break; }
 					if(record.size()!=1) { cmdErr("invalid data record"); return; }
-					newPredecessors.push_back(record[0]);
+					newNeighbors.push_back(record[0]);
 					record.clear();
 				}
-				myGraph->replacePredecessors(parseUint(words[1]), newPredecessors);
+				myGraph->replaceNeighbors(parseUint(words[1]), newNeighbors, words[0]=="replace-successors");
 				cmdOk();
 			}
 			//c: command: clear
