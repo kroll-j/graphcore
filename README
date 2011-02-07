@@ -19,6 +19,9 @@ command: erase-arcs
 command: replace-predecessors NODE
 	read data set of nodes, replace predecessors of NODE with given set.
 
+command: replace-successors NODE
+	read data set of nodes, replace successors of NODE with given set.
+
 command: clear
 	clear the graph model.
 

@@ -797,6 +797,9 @@ class Cli
 			//c: command: replace-predecessors NODE
 			//c: 	read data set of nodes, replace predecessors of NODE with given set.
 			//c:
+			//c: command: replace-successors NODE
+			//c: 	read data set of nodes, replace successors of NODE with given set.
+			//c:
 			else if( words[0]=="replace-predecessors" || words[0]=="replace-successors" )
 			{
 				if(words.size()!=2 || !(hasDataSet||inRedir) || outRedir) { cmdFail("syntax error"); return; }
