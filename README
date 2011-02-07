@@ -1,0 +1,28 @@
+command: list-neighbors NODE [DEPTH]
+	print data set of predecessors and successors of NODE.
+	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
+
+command: list-predecessors NODE [DEPTH]
+	print data set of predecessors of NODE.
+	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
+
+command: list-successors NODE [DEPTH]
+	print data set of successors of NODE.
+	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
+
+command: add-arcs
+	read a data set of arcs and add them to the graph. empty line terminates the set.
+
+command: erase-arcs
+	read a data set of arcs and erase them from the graph. empty line terminates the set.
+
+command: replace-predecessors NODE
+	read data set of nodes, replace predecessors of NODE with given set.
+
+command: clear
+	clear the graph model.
+
+command: quit
+command: q
+	quit program.
+

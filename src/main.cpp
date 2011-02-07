@@ -1,5 +1,5 @@
 // Graph Processor test code. (c) 2011 Johannes Kroll
-// For testing purposes only. Not to be used in production environment. Not to be published.
+// For testing purposes only. Not to be used in production environment.
 #include <string.h>
 #include <stdarg.h>
 #include <iostream>
