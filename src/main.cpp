@@ -53,6 +53,8 @@ class Digraph
 
         void addArc(arc a, bool doSort= true)
         {
+            arcContainer::iterator lb= lower_bound(arcsByHead.begin(), arcsByHead.end(), a, compByHead);
+            if(lb!=arcsByHead.end() && *lb==a) { return; }
             arcsByHead.push_back(a);
             arcsByTail.push_back(a);
             if(doSort) resort(arcsByHead.size()-1);
@@ -200,15 +202,15 @@ class Digraph
             }
         }
 
-        void listArcsByHead()
+        void listArcsByHead(uint32_t start, uint32_t end)
         {
-            for(uint32_t i= 0; i<arcsByHead.size(); i++)
+            for(uint32_t i= start; i<end && i<arcsByHead.size(); i++)
                 printf("%d -> %d\n", arcsByHead[i].tail, arcsByHead[i].head);
         }
 
-        void listArcsByTail()
+        void listArcsByTail(uint32_t start, uint32_t end)
         {
-            for(uint32_t i= 0; i<20 && i<arcsByTail.size(); i++)
+            for(uint32_t i= start; i<end && i<arcsByTail.size(); i++)
                 printf("%d -> %d\n", arcsByTail[i].tail, arcsByTail[i].head);
         }
 
@@ -478,7 +480,12 @@ class Digraph
                     switchToDescendants= true;
                     it= graph.findArcByHead(startNode);
                     this->startNode= startNode;
-                    isFinished= checkFinished();
+                    if( (isFinished= checkFinished()) )
+                    {
+                        byHead= false;
+                        it= graph.findArcByTail(startNode);
+                        isFinished= checkFinished();
+                    }
                 }
 
                 void startPredecessors(uint32_t startNode)
@@ -656,25 +663,13 @@ class Cli
         void run()
         {
             char *command= 0;
-//            char command[1024];
-            size_t nchars= 0;
             FILE *inRedir= 0, *outRedir= 0;
             bool commandHasDataSet;
             while(!doQuit)
             {
                 if(inRedir) fclose(inRedir), inRedir= 0;
                 if(outRedir) fclose(outRedir), outRedir= 0;
-//				printf("> ");
-//				if(getline(&command, &nchars, stdin)==-1)
-//				{
-//					if(feof(stdin)) return;
-//					cmdFail("i/o error"); continue;
-//				}
-//                if(fgets(command, 1024, stdin)==0)
-//                    return;
                 if( (command= readline("> "))==0 ) return;
-//                nchars= strlen(command);
-//                if(nchars&&command[nchars-1]=='\n') command[--nchars]= 0;
                 char *completeCommand= strdup(command);
                 char *d= strchr(command, '>');
                 if(d)
@@ -773,10 +768,10 @@ class Cli
                                 words[0].find("predecessors")!=string::npos? Digraph::PREDECESSORS:
                                 Digraph::DESCENDANTS) );
                 int begin= (words.size()==3? 0: 1);
-                cmdOk("%d nodes, %fs:", (int)resultNodes.size()-begin>=0? resultNodes.size()-begin: 0, getTime()-d);
+                cmdOk("%d nodes, %fs%s", (int)resultNodes.size()-begin>=0? resultNodes.size()-begin: 0, getTime()-d, outRedir? "": ":");
                 for(uint32_t i= begin; i<resultNodes.size(); i++)
-                    fprintf(outFile, "%u,%u\n", resultNodes[i], nodeNiveau[resultNodes[i]]);
-//					fprintf(outFile, "%u\n", resultNodes[i]);
+//                    fprintf(outFile, "%u,%u\n", resultNodes[i], nodeNiveau[resultNodes[i]]);
+					fprintf(outFile, "%u\n", resultNodes[i]);
                 fprintf(outFile, "\n");
             }
             //c: command: add-arcs
@@ -792,25 +787,29 @@ class Cli
                 FILE *f= (inRedir? inRedir: stdin);
                 uint32_t oldSize= myGraph->size();
                 vector<uint32_t> record;
-                while(true)
+                for(int lineno= 0; ; lineno++)
                 {
-                    if(!readRecord(f, record))
+                    if(!readUintRecord(f, record))
                     {
                         cmdErr("couldn't read data set");
                         return;
                     }
-                    if(record.size()==0)
+                    else if(record.size()==0)
                     {
-                        myGraph->resort(oldSize); /*myGraph->checkDups();*/
+                        myGraph->resort(oldSize);
                         cmdOk();
                         return;
                     }
-                    if(record.size()!=2)
+                    else if(record.size()!=2)
                     {
                         cmdErr("invalid data record");
                         return;
                     }
-                    myGraph->addArc( record[1], record[0], false );
+                    else
+                    {
+                        if(record[0]==0 || record[1]==0) { cmdErr("invalid data record"); return; }
+                        myGraph->addArc( record[0], record[1], false );
+                    }
                     record.clear();
                 }
             }
@@ -828,7 +827,7 @@ class Cli
                 vector<uint32_t> record;
                 while(true)
                 {
-                    if(!readRecord(f, record))
+                    if(!readUintRecord(f, record))
                     {
                         cmdErr("couldn't read data set");
                         return;
@@ -864,7 +863,7 @@ class Cli
                 vector<uint32_t> record, newNeighbors;
                 while(true)
                 {
-                    if(!readRecord(f, record))
+                    if(!readUintRecord(f, record))
                     {
                         cmdErr("couldn't read data set");
                         return;
@@ -901,9 +900,14 @@ class Cli
                 cmdOk();
                 doQuit= true;
             }
-            else if(words[0]=="test")
+            else if(words[0]=="list-by-tail")
             {
-                myGraph->listArcsByTail();
+                myGraph->listArcsByTail(parseUint(words[1]), parseUint(words[2]));
+                cmdOk();
+            }
+            else if(words[0]=="list-by-head")
+            {
+                myGraph->listArcsByHead(parseUint(words[1]), parseUint(words[2]));
                 cmdOk();
             }
             else if(words[0]=="print-stats")
@@ -931,15 +935,18 @@ class Cli
             return str;
         }
 
-        bool readRecord(FILE *f, vector<uint32_t> &ret)
+        bool isValidUint(const string& s)
+        {
+            // allow only positive decimal digits
+            for(int i= 0; s[i]; i++)
+                if( !isdigit(s[i]) ) return false;
+            return true;
+        }
+
+        bool readUintRecord(FILE *f, vector<uint32_t> &ret)
         {
             char line[1024];
             uint32_t n;
-//			if(getline(&line, &n, f)==-1)
-//			{
-//				if(!feof(f)) return false;
-//				else return true;
-//			}
             if(fgets(line, 1024, f)==0)
             {
                 if(!feof(f)) return false;
@@ -948,8 +955,11 @@ class Cli
             if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;
             vector<string> strings= splitString(line);
             for(uint32_t i= 0; i<strings.size(); i++)
-                ret.push_back(parseUint(strings[i]));
-//			free(line);
+            {
+                if(!isValidUint(strings[i])) return false;
+                uint32_t val= parseUint(strings[i]);
+                ret.push_back(val);
+            }
             return true;
         }
 
