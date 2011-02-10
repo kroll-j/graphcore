@@ -741,21 +741,29 @@ class Cli
 
             FILE *outFile= (outRedir? outRedir: stdout);
 
-            //c: command: list-neighbors NODE [DEPTH]
+            //c: command: list-neighbors NODE DEPTH
+            //c: 	print data set of predecessors and successors of NODE recursively up to DEPTH.
+            //c:
+            //c: command: list-predecessors NODE DEPTH
+            //c: 	print data set of predecessors of NODE recursively up to DEPTH.
+            //c:
+            //c: command: list-successors NODE DEPTH
+            //c: 	print data set of successors of NODE recursively up to DEPTH.
+            //c:
+            //c: command: list-neighbors-nonrecursive NODE
             //c: 	print data set of predecessors and successors of NODE.
-            //c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
             //c:
-            //c: command: list-predecessors NODE [DEPTH]
+            //c: command: list-predecessors-nonrecursive NODE
             //c: 	print data set of predecessors of NODE.
-            //c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
             //c:
-            //c: command: list-successors NODE [DEPTH]
+            //c: command: list-successors-nonrecursive NODE
             //c: 	print data set of successors of NODE.
-            //c:	if DEPTH is given, include NODE in the data set, and do recursion up to DEPTH.
             //c:
-            if(words[0]=="list-neighbors" || words[0]=="list-predecessors" || words[0]=="list-successors")
+            if(words[0]=="list-neighbors" || words[0]=="list-predecessors" || words[0]=="list-successors" ||
+               words[0]=="list-neighbors-nonrecursive" || words[0]=="list-predecessors-nonrecursive" || words[0]=="list-successors-nonrecursive")
             {
-                if( (words.size()!=3&&words.size()!=2) || hasDataSet)
+                bool nonrecursive= words[0].find("nonrecursive")!=string::npos;
+                if( (words.size()!=(nonrecursive? 2: 3)) || hasDataSet)
                 {
                     cmdFail("syntax error");
                     return;
