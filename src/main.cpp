@@ -18,7 +18,7 @@
 
 using namespace std;
 
-
+// time measurement
 double getTime()
 {
     timeval tv;
@@ -51,6 +51,7 @@ class Digraph
         {
         }
 
+        // add an arc to the graph
         void addArc(arc a, bool doSort= true)
         {
             arcContainer::iterator lb= lower_bound(arcsByHead.begin(), arcsByHead.end(), a, compByHead);
@@ -60,208 +61,36 @@ class Digraph
             if(doSort) resort(arcsByHead.size()-1);
         }
 
+        // add an arc to the graph
         void addArc(uint32_t tail, uint32_t head, bool doSort= true)
         {
             addArc( (arc) { tail, head }, doSort );
         }
 
-/*
-        void generateCompleteGraph(int nNodes)
-        {
-            arc *arcs= new arc[nNodes*nNodes];
-            for(int i= 0; i<nNodes; i++)
-            {
-                for(int k= 0; k<nNodes; k++)
-                    arcs[i*nNodes+k].tail= i+1,
-                    arcs[i*nNodes+k].head= k+1;
-            }
-            addArcs(nNodes*nNodes, arcs);
-        }
-*/
-
-        void generateRandomArcs(int numArcs, int maxNodeID)
-        {
-            arc a;
-            int oldSize= arcsByHead.size();
-            printf("generating %'d random arcs...\n", numArcs);
-            for(int i= 0; i<numArcs; i++)
-            {
-                a.tail= i%maxNodeID+1;
-                a.head= random()%maxNodeID+1;
-                addArc(a, false);
-                if(i && numArcs>100 && (i % (numArcs/100) == 0))
-                    printf("\r%3u", (uint32_t)((uint64_t)i*100/numArcs)), fflush(stdout);
-            }
-//			printf("\rsorting by tail\n");
-//			sort(arcsByTail.begin(), arcsByTail.end(), compByTail);
-//			printf("sorting by head\n");
-//			sort(arcsByHead.begin(), arcsByHead.end(), compByHead);
-//			printf("\rdone.\n");
-            printf("\rsorting...\n");
-            double d= getTime();
-
-            threadedSort(oldSize);
-//			printf(" by tail\n");
-//			stable_sort(arcsByTail.begin(), arcsByTail.end(), compByTail);
-//			printf(" by head\n");
-//			stable_sort(arcsByHead.begin(), arcsByHead.end(), compByHead);
-
-//			printf(" by tail\n");
-//			doMerge(arcsByTail.begin(), arcsByTail.begin()+oldSize, arcsByTail.end(), compByTail);
-//			printf(" by head\n");
-//			doMerge(arcsByHead.begin(), arcsByHead.begin()+oldSize, arcsByHead.end(), compByHead);
-
-            printf("done in %fs\n", getTime()-d);
-        }
-/*
-        void listDescendants(uint32_t node, int depth, int curDepth= 0)
-        {
-            arcContainer::iterator start= findArcByTail(node), it;
-            for(it= start; it!=arcsByTail.end() && it->tail==node; it++)
-                printf("%*s%d -> %d\n", curDepth, "", it->tail, it->head);
-
-            if(curDepth<depth)
-                for(it= start; it!=arcsByTail.end() && it->tail==node; it++)
-                {
-//					printf("%*s%d -> %d\n", curDepth, "", it->tail, it->head);
-                    if(it->head==it->tail) continue;
-                    if(circleSet.find(it->head)!=circleSet.end()) { printf("circle found\n"); continue; }
-                    circleSet.insert(it->head);
-                    listDescendants(it->head, depth, curDepth+1);
-                }
-        }
-
-        void listPredecessors(uint32_t node, int depth, int curDepth= 0)
-        {
-            arcContainer::iterator start= findArcByHead(node), it;
-            for(it= start; it!=arcsByHead.end() && it->head==node; it++)
-                printf("%*s%d <- %d\n", curDepth, "", it->head, it->tail);
-
-            if(curDepth<depth)
-                for(it= start; it!=arcsByHead.end() && it->head==node; it++)
-                {
-//					printf("%*s%d <- %d\n", curDepth, "", it->head, it->tail);
-                    if(it->head==it->tail) continue;
-                    if(circleSet.find(it->tail)!=circleSet.end()) { printf("circle found\n"); continue; }
-                    circleSet.insert(it->tail);
-                    listPredecessors(it->tail, depth, curDepth+1);
-                }
-        }
-*/
-/*
-        void printNeighbors(uint32_t node, int depth)
-        {
-            printf("node: %d\n", node);
-            circleSet.clear();
-            listPredecessors(node, depth);
-            circleSet.clear();
-            listDescendants(node, depth);
-        }
-*/
-
-/*
-        void printNeighbors(uint32_t node, int depth, int curDepth= 1)
-        {
-            if(curDepth==1)
-            {
-                printf("node: %d\n", node);
-                circleSet.clear();
-                circleSet.insert(node);
-            }
-
-            arcContainer::iterator it= findArcByTail(node);
-            for(; it!=arcsByTail.end() && it->tail==node; it++)
-            {
-                if(circleSet.find(it->head)!=circleSet.end()) continue;
-                circleSet.insert(it->head);
-//				printf("%*s%d -> %d\n", curDepth, "", it->tail, it->head);
-                printf("%d ", it->head);
-                if(it->tail!=it->head && curDepth<depth)
-                    printNeighbors(it->head, depth, curDepth+1);
-            }
-
-            it= findArcByHead(node);
-            for(; it!=arcsByHead.end() && it->head==node; it++)
-            {
-                if(circleSet.find(it->tail)!=circleSet.end()) continue;
-                circleSet.insert(it->tail);
-//				printf("%*s%d <- %d\n", curDepth, "", it->head, it->tail);
-                printf("%d ", it->tail);
-                if(it->tail!=it->head && curDepth<depth)
-                    printNeighbors(it->tail, depth, curDepth+1);
-            }
-        }
-*/
-
-        void checkDups()
-        {
-            for(uint32_t i= 0; i<size()-1; i++)
-            {
-                if(arcsByHead[i].tail==arcsByHead[i+1].tail && arcsByHead[i].head==arcsByHead[i+1].head)
-                    printf("dup: %d\n", i);
-            }
-        }
-
-        void listArcsByHead(uint32_t start, uint32_t end)
-        {
-            for(uint32_t i= start; i<end && i<arcsByHead.size(); i++)
-                printf("%d -> %d\n", arcsByHead[i].tail, arcsByHead[i].head);
-        }
-
-        void listArcsByTail(uint32_t start, uint32_t end)
-        {
-            for(uint32_t i= start; i<end && i<arcsByTail.size(); i++)
-                printf("%d -> %d\n", arcsByTail[i].tail, arcsByTail[i].head);
-        }
-
-
-        const vector<uint32_t>& getNeighbors(uint32_t node, int depth)
-        {
-            circleSet.clear();
-            resultNodes.clear();
-            printf("getNeighbors %d %d\n", node, depth);
-            findNeighbors(node, depth);
-            return resultNodes;
-        }
-
-        void printNeighbors(uint32_t node, int depth)
-        {
-            printf("finding neighbors...\n");
-            double d= getTime();
-            const vector<uint32_t>& result= getNeighbors(node, depth);
-            d= getTime()-d;
-            fprintf(stderr, "GET time: %f\n", d);
-
-            printf("printing neighbors...\n");
-            for(uint32_t i= 0; i<result.size(); i++)
-                printf("%d ", result[i]);
-            puts("");
-        }
-
-
+        // clear the graph model
         void clear()
         {
             arcsByTail.clear();
             arcsByHead.clear();
-            circleSet.clear();
-            resultNodes.clear();
         }
 
+        // re-sort arcs starting with given index
         void resort(uint32_t begin= 0)
         {
             threadedSort(begin);
         }
 
-        uint32_t size()
+        // return number of arcs in graph
+        uint32_t size() const
         {
             return arcsByTail.size();
         }
-
 
         enum BFSType
         {
             NEIGHBORS= 0, PREDECESSORS, DESCENDANTS
         };
+        // breitensuche / breadth-first-search
         void doBFS(vector<uint32_t> &resultNodes, map<uint32_t,uint32_t> &niveau,
                    uint32_t startNode, uint32_t depth, BFSType searchType= NEIGHBORS)
         {
@@ -284,7 +113,6 @@ class Digraph
                 for(; !it.finished(); ++it)
                 {
                     uint32_t neighbor= *it;
-//					printf("neighbor=%d\n", neighbor);
                     if(niveau.find(neighbor)==niveau.end())
                     {
                         niveau.insert(make_pair(neighbor, curNiveau+1));
@@ -295,6 +123,7 @@ class Digraph
             }
         }
 
+        // erase an arc from the graph
         void eraseArc(uint32_t tail, uint32_t head)
         {
             arcContainer::iterator it;
@@ -306,43 +135,6 @@ class Digraph
                     *it==value )
                 arcsByTail.erase(it);
         }
-
-/*
-        bool replacePredecessors(uint32_t node, vector<uint32_t> newPredecessors)
-        {
-            NeighborIterator it(*this);
-            it.startPredecessors(node);
-            stable_sort(newPredecessors.begin(), newPredecessors.end());
-            vector<uint32_t>::iterator p= newPredecessors.begin();
-            for(; !it.finished() && p!=newPredecessors.end(); ++it, ++p)
-                // replace arcs
-                it.getArc().tail= *p;
-            if(!it.finished())
-            {
-                // remove the rest
-                for(; !it.checkFinished(); )
-                {
-                    arcContainer::iterator f= lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail);
-                    if(f==arcsByTail.end() || !(*f==it.getArc()))
-                    {
-                        printf("arc %d -> %d not found?!\n", it.getArc().tail, it.getArc().head);
-                        return false;
-                    }
-                    arcsByTail.erase(f);
-                    arcsByHead.erase(it.getIterator());
-                }
-            }
-            else if(p!=newPredecessors.end())
-            {
-                // add new ones and resort
-                int oldSize= arcsByHead.size();
-                for(; p!=newPredecessors.end(); p++)
-                    addArc(*p, node, false);
-                resort(oldSize);
-            }
-            return true;
-        }
-*/
 
         // replace predecessors (successors=false) or descendants (successors=true) of a node
         bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
@@ -390,7 +182,7 @@ class Digraph
             return true;
         }
 
-
+        // print some statistics about the graph
         void printStats()
         {
             printf("%d arcs consuming %dMB of RAM\n", arcsByHead.size(), arcsByHead.size()*sizeof(arc)*2/(1024*1024));
@@ -418,35 +210,70 @@ class Digraph
         }
 
 
-    private:
-        typedef vector<arc> arcContainer;
-        arcContainer arcsByTail, arcsByHead;
-        set<uint32_t> circleSet;
-        vector<uint32_t> resultNodes;
 
-        // tiefensuche -- funktioniert so nicht mit tiefenbeschränkung!
-        void findNeighbors(uint32_t node, int depth, int curDepth= 1)
+
+        // check for duplicates
+        void checkDups()
         {
-            arcContainer::iterator it;
-            for(it= findArcByTail(node); it!=arcsByTail.end() && it->tail==node; it++)
+            for(uint32_t i= 0; i<size()-1; i++)
             {
-                if(circleSet.find(it->head)!=circleSet.end()) continue;
-                circleSet.insert(it->head);
-                resultNodes.push_back(it->head);
-                if(it->tail!=it->head && curDepth<depth)
-                    findNeighbors(it->head, depth, curDepth+1);
-            }
-
-            for(it= findArcByHead(node); it!=arcsByHead.end() && it->head==node; it++)
-            {
-                if(circleSet.find(it->tail)!=circleSet.end()) continue;
-                circleSet.insert(it->tail);
-                resultNodes.push_back(it->tail);
-                if(it->tail!=it->head && curDepth<depth)
-                    findNeighbors(it->tail, depth, curDepth+1);
+                if(arcsByHead[i].tail==arcsByHead[i+1].tail && arcsByHead[i].head==arcsByHead[i+1].head)
+                    printf("dup: %d\n", i);
             }
         }
 
+        // generate a complete graph with nodes 1..nNodes
+        void generateCompleteGraph(int nNodes)
+        {
+            uint32_t oldSize= size();
+            for(int i= 0; i<nNodes; i++)
+            {
+                for(int k= 0; k<nNodes; k++)
+                    addArc(i+1, k+1, false);
+            }
+            resort(oldSize);
+        }
+
+        // generate some random arcs
+        void generateRandomArcs(int numArcs, int maxNodeID)
+        {
+            arc a;
+            int oldSize= arcsByHead.size();
+            printf("generating %'d random arcs...\n", numArcs);
+            for(int i= 0; i<numArcs; i++)
+            {
+                a.tail= i%maxNodeID+1;
+                a.head= random()%maxNodeID+1;
+                addArc(a, false);
+                if(i && numArcs>100 && (i % (numArcs/100) == 0))
+                    printf("\r%3u", (uint32_t)((uint64_t)i*100/numArcs)), fflush(stdout);
+            }
+            printf("\rsorting...\n");
+            double d= getTime();
+            resort(oldSize);
+            printf("done in %fs\n", getTime()-d);
+        }
+
+        // list arcs by index sorted by head
+        void listArcsByHead(uint32_t start, uint32_t end)
+        {
+            for(uint32_t i= start; i<end && i<arcsByHead.size(); i++)
+                printf("%d -> %d\n", arcsByHead[i].tail, arcsByHead[i].head);
+        }
+
+        // list arcs by index sorted by tail
+        void listArcsByTail(uint32_t start, uint32_t end)
+        {
+            for(uint32_t i= start; i<end && i<arcsByTail.size(); i++)
+                printf("%d -> %d\n", arcsByTail[i].tail, arcsByTail[i].head);
+        }
+
+
+    private:
+        typedef vector<arc> arcContainer;
+        arcContainer arcsByTail, arcsByHead;
+
+        // helper class for iterating over all predecessors/successors (or both) of a node
         class NeighborIterator
         {
             private:
@@ -549,11 +376,13 @@ class Digraph
         friend class NeighborIterator;
 
 
+        // helper function for sorting arcs by tail
         static bool compByTail(arc a, arc b)
         {
             return (a.tail==b.tail? a.head<b.head: a.tail<b.tail);
         }
 
+        // helper function for sorting arcs by head
         static bool compByHead(arc a, arc b)
         {
             return (a.head==b.head? a.tail<b.tail: a.head<b.head);
@@ -578,12 +407,14 @@ class Digraph
             arcContainer::iterator begin, mergeBegin, end;
             bool (*compFunc)(arc a, arc b);
         };
+        // thread function for sorting
         static void *sorterThread(void *a)
         {
             sorterThreadArg *arg= (sorterThreadArg*)a;
             doMerge(arg->begin, arg->mergeBegin, arg->end, arg->compFunc);
             return 0;
         }
+        // re-sort arcs in 2 threads
         void threadedSort(int mergeBegin)
         {
             pthread_t threadID;
@@ -593,6 +424,7 @@ class Digraph
             pthread_join(threadID, 0);
         }
 
+        // helper function: merge & resort
         static void doMerge(arcContainer::iterator begin, arcContainer::iterator mergeBegin, arcContainer::iterator end,
                             bool (*compFunc)(arc a, arc b))
         {
@@ -602,52 +434,6 @@ class Digraph
 };
 
 
-/*
-void readFileTest(Digraph &graph, const char *filename)
-{
-	FILE *f= fopen(filename, "r");
-	char *line= NULL;
-	size_t lineSize= 0;
-	lineSize= getline(&line, &lineSize, f);
-	printf("reading %s\n", filename);
-	uint32_t numArcs= 0;
-	uint32_t greatestT= 0, greatestH= 0, smallestT= 0xFFFFFFFF, smallestH= 0xFFFFFFFF;
-	while(!feof(f))
-	{
-		if(getline(&line, &lineSize, f)==-1) break;
-		char *child= line, *parent= line;
-		while( *parent && *parent!='\t' && *parent!=',' ) parent++;
-		while( *parent && (*parent=='\t' || *parent==',') ) parent++;
-		Digraph::arc a= (Digraph::arc){ strtoul(parent, 0, 0), strtoul(child, 0, 0) };
-		if(a.tail>greatestT) greatestT= a.tail;
-		if(a.head>greatestH) greatestH= a.head;
-		if(a.tail<smallestT) smallestT= a.tail;
-		if(a.head<smallestH) smallestH= a.head;
-		graph.addArc( a, false );
-		numArcs++;
-	}
-	printf("%d arcs read\n", numArcs);
-	printf("sorting\n");
-	double d= getTime();
-	graph.resort();
-	d= getTime()-d;
-	printf("%f s\n", d);
-
-	printf("tails: %d/%d\nheads: %d/%d\n", smallestT, greatestT, smallestH, greatestH);
-
-	for(int i= 0; i<100; i++)
-	{
-		double d= getTime();
-//		graph.printNeighbors(10, 10);
-		printf("NODE: %d\n", i);
-//		graph.printNeighbors(i, 1);
-		const vector<uint32_t> &result= graph.getNeighbors(i*97, 10);
-		printf("%d neighbors found\n", result.size());
-		d= getTime()-d;
-		fprintf(stderr, "time: %f\n", d);
-	}
-}
-*/
 
 class Cli
 {
@@ -660,6 +446,7 @@ class Cli
         {
         }
 
+        // read and execute commands from stdin until eof or quit command
         void run()
         {
             char *command= 0;
@@ -698,7 +485,7 @@ class Cli
                     commandHasDataSet= false;
                 if(strlen(command))
                     execute(command, commandHasDataSet, inRedir, outRedir),
-                            add_history(completeCommand);
+                    add_history(completeCommand);
                 free(command);
                 free(completeCommand);
             }
@@ -719,6 +506,7 @@ class Cli
 
         static command commands[];
 */
+        // execute a command
         void execute(char *command, bool hasDataSet, FILE *inRedir, FILE *outRedir)
         {
             vector<string> words= splitString(command);
@@ -876,10 +664,7 @@ class Cli
                         cmdErr("couldn't read data set");
                         return;
                     }
-                    if(record.size()==0)
-                    {
-                        /*myGraph->checkDups();*/ break;
-                    }
+                    if(record.size()==0) break;
                     if(record.size()!=1)
                     {
                         cmdErr("invalid data record");
@@ -929,11 +714,13 @@ class Cli
             }
         }
 
+        // convert string to unsigned int
         static uint32_t parseUint(string str)
         {
             return strtoul(str.c_str(), 0, 0);
         }
 
+        // get i/o redirection filename from command line
         static char *getRedirFilename(char *str)
         {
             while(isspace(*str)) str++;
@@ -943,6 +730,7 @@ class Cli
             return str;
         }
 
+        // check if string forms a valid unsigned integer
         bool isValidUint(const string& s)
         {
             // allow only positive decimal digits
@@ -951,6 +739,7 @@ class Cli
             return true;
         }
 
+        // parse a data record in text form
         bool readUintRecord(FILE *f, vector<uint32_t> &ret)
         {
             char line[1024];
@@ -965,12 +754,12 @@ class Cli
             for(uint32_t i= 0; i<strings.size(); i++)
             {
                 if(!isValidUint(strings[i])) return false;
-                uint32_t val= parseUint(strings[i]);
-                ret.push_back(val);
+                ret.push_back(parseUint(strings[i]));
             }
             return true;
         }
 
+        // print success/failure/error messages
         void cmdOk(const char *msg= "", ...)
         {
             printf("OK. ");
@@ -989,6 +778,7 @@ class Cli
             printf("ERROR! %s\n", msg);
         }
 
+        // split a string into words using given delimiters
         vector<string> splitString(char *str, const char *delim= " \n\t,")
         {
             vector<string> ret;
@@ -1002,7 +792,6 @@ class Cli
                 ret.push_back(string(start));
             }
         }
-
 };
 
 
@@ -1010,61 +799,9 @@ class Cli
 int main()
 {
     Digraph graph;
-
-//	readFileTest(graph, "/tmp/dewiki-cat-all.tsv");
-
     Cli cli(&graph);
+
     cli.run();
-
-    return 0;
-
-//	graph.generateRandomArcs(500, 10);
-//	for(int i= 0; i<10; i++)
-//	{
-//		graph.printNeighbors(i, 500);
-//		puts("----");
-//	}
-//	graph.printNeighbors(5, 1000);
-//	graph.listArcsByTail();
-
-
-
-    /*
-    // 2.10
-    	graph.addArc( (Digraph::arc) { 1, 2 } );
-    	graph.addArc( (Digraph::arc) { 1, 5 } );
-    	graph.addArc( (Digraph::arc) { 2, 3 } );
-    	graph.addArc( (Digraph::arc) { 2, 4 } );
-    	graph.addArc( (Digraph::arc) { 3, 4 } );
-    	graph.addArc( (Digraph::arc) { 5, 4 } );
-    	graph.addArc( (Digraph::arc) { 5, 3 } );
-
-    	for(int i= 1; i<=5; i++)
-    		graph.printNeighbors(i, 1000),
-    		puts("\n------");
-
-    */
-
-
-//	srandom(time(0));
-
-    for(int i= 10000; i>=10; i/= 10)
-    {
-        graph.clear();
-        graph.generateRandomArcs(70000000, 200000);
-        graph.generateRandomArcs(i, 200000);
-
-        double d= getTime();
-        //	graph.printNeighbors(10, 10);
-        const vector<uint32_t> &result= graph.getNeighbors(10, 7);
-        printf("%d neighbors found\n", result.size());
-        d= getTime()-d;
-        fprintf(stderr, "time: %f\n", d);
-    }
-
-
-//	graph.generateCompleteGraph(500);
-//	graph.printNeighbors(2, 1);
 
     return 0;
 }
