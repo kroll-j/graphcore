@@ -157,15 +157,15 @@ class Digraph
                          lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail));
                     if(f==(successors? arcsByHead.end(): arcsByTail.end()) || !(*f==it.getArc()))
                     {
-                        printf("arc %d -> %d not found?!\n", it.getArc().tail, it.getArc().head);
+//                        printf("arc %d -> %d not found?!\n", it.getArc().tail, it.getArc().head);
                         return false;
                     }
                     if(successors)
                         arcsByTail.erase(it.getIterator()),
-                                         arcsByHead.erase(f);
+                        arcsByHead.erase(f);
                     else
                         arcsByTail.erase(f),
-                                         arcsByHead.erase(it.getIterator());
+                        arcsByHead.erase(it.getIterator());
                 }
             }
             else if(p!=newNeighbors.end())
@@ -173,10 +173,8 @@ class Digraph
                 // add new ones and resort
                 int oldSize= arcsByHead.size();
                 for(; p!=newNeighbors.end(); p++)
-                    if(successors)
-                        addArc(node, *p, false);
-                    else
-                        addArc(*p, node, false);
+                    if(successors) addArc(node, *p, false);
+                    else addArc(*p, node, false);
                 resort(oldSize);
             }
             return true;
@@ -189,7 +187,7 @@ class Digraph
             bool invalid= false;
             if(arcsByHead.size()!=arcsByTail.size())
                 printf("array sizes don't match?!! (%d != %d)\n", arcsByHead.size(), arcsByTail.size()),
-                       invalid= true;
+                invalid= true;
             int size= arcsByHead.size();
             int numDups= 0;
             uint32_t minNodeID= 0xFFFFFFFF, maxNodeID= 0;
@@ -345,14 +343,16 @@ class Digraph
                                 isFinished= true;
                                 return;
                             }
-                            if( (it= graph.findArcByTail(startNode))==graph.arcsByTail.end() ||
-                                    it->tail!=startNode ) isFinished= true;
-                            else byHead= false;
+                            if( (it= graph.findArcByTail(startNode))==graph.arcsByTail.end() || it->tail!=startNode )
+                                isFinished= true;
+                            else
+                                byHead= false;
                         }
                     }
                     else
                     {
-                        if(++it==graph.arcsByTail.end() || it->tail!=startNode) isFinished= true;
+                        if(++it==graph.arcsByTail.end() || it->tail!=startNode)
+                            isFinished= true;
                     }
                 }
 
@@ -673,8 +673,10 @@ class Cli
                     newNeighbors.push_back(record[0]);
                     record.clear();
                 }
-                myGraph->replaceNeighbors(parseUint(words[1]), newNeighbors, words[0]=="replace-successors");
-                cmdOk();
+                if(myGraph->replaceNeighbors(parseUint(words[1]), newNeighbors, words[0]=="replace-successors"))
+                    cmdOk();
+                else
+                    cmdErr("replaceNeighbors failed.");
             }
             //c: command: clear
             //c: 	clear the graph model.
