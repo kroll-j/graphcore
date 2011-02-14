@@ -26,6 +26,12 @@ double getTime()
     return tv.tv_sec + tv.tv_usec*0.000001;
 }
 
+// test if stdout refers to tty
+bool isInteractive()
+{
+    return isatty(fileno(stdout));
+}
+
 
 class Digraph
 {
@@ -800,6 +806,9 @@ class Cli
 
 int main()
 {
+    // gag readline when running non-interactively.
+    if(!isInteractive()) rl_outstream= fopen("/dev/null", "w");
+
     Digraph graph;
     Cli cli(&graph);
 
