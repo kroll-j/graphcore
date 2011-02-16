@@ -1,5 +1,5 @@
-// Graph Processor test code. (c) 2011 Johannes Kroll
-// For testing purposes only. Not to be used in production environment.
+// Graph Processor core.
+// (c) Wikimedia Deutschland, written by Johannes Kroll in 2011
 #include <string.h>
 #include <stdarg.h>
 #include <iostream>
@@ -29,7 +29,7 @@ double getTime()
 // test if stdout refers to tty
 bool isInteractive()
 {
-    return isatty(fileno(stdout));
+    return isatty(STDOUT_FILENO);
 }
 
 

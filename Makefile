@@ -1,9 +1,9 @@
 LDFLAGS=-lpthread -lreadline
 
-all: 	graphtest graphtest.dbg
+all: 	graphcore graphcore.dbg
 
-graphtest:	src/main.cpp
-		g++ -O3 -fexpensive-optimizations src/main.cpp $(LDFLAGS) -ographtest
+graphcore:	src/main.cpp
+		g++ -O3 -fexpensive-optimizations src/main.cpp $(LDFLAGS) -ographcore
 
-graphtest.dbg:	src/main.cpp
-		g++ -ggdb src/main.cpp $(LDFLAGS) -ographtest.dbg
+graphcore.dbg:	src/main.cpp
+		g++ -ggdb src/main.cpp $(LDFLAGS) -ographcore.dbg
