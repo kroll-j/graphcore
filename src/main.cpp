@@ -440,17 +440,92 @@ class Digraph
 };
 
 
+// convenience macros for printing success/failure/error messages from the cli.
+// if the protocol for those messages should ever have to be modified, change these.
+#define SUCCESS_STR "OK."
+#define FAIL_STR "FAILED!"
+#define ERROR_STR "ERROR!"
+#define cliSuccess(x...) printf(SUCCESS_STR " " x)
+#define cliFailure(x...) printf(FAIL_STR " " x)
+#define cliError(x...) printf(ERROR_STR " " x)
+
+// abstract base class for cli commands
+class CliCommand
+{
+    public:
+        enum ReturnType
+        {
+            RT_NONE,
+            RT_ARC_LIST,
+            RT_NODE_LIST,
+            RT_OTHER,
+        };
+
+        CliCommand() { }
+        virtual ~CliCommand() { }
+
+        // the command name
+        virtual string getName()            { return "CliCommand"; }
+        // one line describing the command and its parameters
+        virtual string getSynopsis()        { return getName(); }
+        // help text describing the function of the command
+        virtual string getHelpText()        { return "Help text for " + getName() + "."; }
+        virtual ReturnType getReturnType()= 0;
+        void syntaxError()                  { cout << FAIL_STR " Syntax: " << getSynopsis() << endl; }
+};
+
+
+// base classes for cli commands. derive commands from these.
+// execute() shall print the appropriate success/failure/error message
+// and return true on success, false otherwise.
+
+// cli commands which do not return a data set.
+class CliCommand_RTVoid: public CliCommand
+{
+    public:
+        ReturnType getReturnType() { return RT_NONE; }
+        virtual bool execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)= 0;
+};
+
+// cli commands which return a node list data set.
+class CliCommand_RTNodeList: public CliCommand
+{
+    public:
+        ReturnType getReturnType() { return RT_NODE_LIST; }
+        virtual bool execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+                             vector<uint32_t> &result)= 0;
+};
+
+// cli commands which return some other data set. execute() must print the result to outFile.
+class CliCommand_RTOther: public CliCommand
+{
+    public:
+        ReturnType getReturnType() { return RT_OTHER; }
+        virtual bool execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)= 0;
+};
+
+
 
 class Cli
 {
     public:
-        Cli(Digraph *g): myGraph(g), doQuit(false)
-        {
-        }
+        Cli(Digraph *g);
 
         ~Cli()
         {
+            for(unsigned int i= 0; i<commands.size(); i++)
+                delete(commands[i]);
+            commands.clear();
         }
+
+        CliCommand *findCommand(string name)
+        {
+            for(unsigned i= 0; i<commands.size(); i++)
+                if(commands[i]->getName()==name) return commands[i];
+            return 0;
+        }
+
+        vector<CliCommand*> &getCommands() { return commands; }
 
         // read and execute commands from stdin until eof or quit command
         void run()
@@ -470,7 +545,7 @@ class Cli
                     *d++= 0;
                     if(!(outRedir= fopen(getRedirFilename(d), "w")))
                     {
-                        cmdFail("couldn't open output file");
+                        cliFailure("couldn't open output file\n");
                         continue;
                     }
                 }
@@ -480,7 +555,7 @@ class Cli
                     *d++= 0;
                     if(!(inRedir= fopen(getRedirFilename(d), "r")))
                     {
-                        cmdFail("couldn't open input file");
+                        cliFailure("couldn't open input file\n");
                         continue;
                     }
                 }
@@ -497,124 +572,256 @@ class Cli
             }
         }
 
+        // convert string to unsigned int
+        static uint32_t parseUint(string str)
+        {
+            return strtoul(str.c_str(), 0, 0);
+        }
+
+        // check if string forms a valid unsigned integer
+        static bool isValidUint(const string& s)
+        {
+            // allow only positive decimal digits
+            for(int i= 0; s[i]; i++)
+                if( !isdigit(s[i]) ) return false;
+            return true;
+        }
+
+        // parse a data record in text form
+        static bool readUintRecord(FILE *f, vector<uint32_t> &ret)
+        {
+            char line[1024];
+            uint32_t n;
+            if(fgets(line, 1024, f)==0)
+            {
+                if(!feof(f)) return false;
+                else return true;
+            }
+            if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;
+            vector<string> strings= splitString(line);
+            for(uint32_t i= 0; i<strings.size(); i++)
+            {
+                if(!isValidUint(strings[i])) return false;
+                ret.push_back(parseUint(strings[i]));
+            }
+            return true;
+        }
+
+
     private:
         Digraph *myGraph;
         bool doQuit;
 
-/*
-        struct command
-        {
-            const char *name;
-            void (Cli::*func)(vector<string> words);
-            bool producesData;
-            bool readsData;
-        };
+        vector<CliCommand*> commands;
 
-        static command commands[];
-*/
         // execute a command
         void execute(char *command, bool hasDataSet, FILE *inRedir, FILE *outRedir)
         {
             vector<string> words= splitString(command);
             if(words.size()<1) return;
 
-/*
-            for(int i= 0; commands[i].name; i++)
-            {
-                if(words[0]==commands[i].name)
-                {
-                    if(commands[i].producesData)
-                    {
-                        if(outRedir)
-                        else if(!hasDataSet) { cmdFail("syntax error"); continue; }
-                    }
-                    (this->*commands[i].func)(words);
-                }
-            }
-*/
-
             FILE *outFile= (outRedir? outRedir: stdout);
+            FILE *inFile= (inRedir? inRedir: stdin);
+            CliCommand *cmd= findCommand(words[0]);
 
-            //c: command: list-neighbors NODE DEPTH
-            //c: 	print data set of predecessors and successors of NODE recursively up to DEPTH.
-            //c:
-            //c: command: list-predecessors NODE DEPTH
-            //c: 	print data set of predecessors of NODE recursively up to DEPTH.
-            //c:
-            //c: command: list-successors NODE DEPTH
-            //c: 	print data set of successors of NODE recursively up to DEPTH.
-            //c:
-            //c: command: list-neighbors-nonrecursive NODE
-            //c: 	print data set of predecessors and successors of NODE.
-            //c:
-            //c: command: list-predecessors-nonrecursive NODE
-            //c: 	print data set of predecessors of NODE.
-            //c:
-            //c: command: list-successors-nonrecursive NODE
-            //c: 	print data set of successors of NODE.
-            //c:
-            if(words[0]=="list-neighbors" || words[0]=="list-predecessors" || words[0]=="list-successors" ||
-               words[0]=="list-neighbors-nonrecursive" || words[0]=="list-predecessors-nonrecursive" || words[0]=="list-successors-nonrecursive")
+            if(cmd)
             {
-                bool nonrecursive= words[0].find("nonrecursive")!=string::npos;
-                if( (words.size()!=(nonrecursive? 2: 3)) || hasDataSet)
+                switch(cmd->getReturnType())
                 {
-                    cmdFail("syntax error");
-                    return;
-                }
-                double d= getTime();
-                vector<uint32_t> resultNodes;
-                map<uint32_t,uint32_t> nodeNiveau;
-                myGraph->doBFS(resultNodes, nodeNiveau, parseUint(words[1]), (words.size()==3? parseUint(words[2]): 1),
-                               (words[0].find("neighbors")!=string::npos? Digraph::NEIGHBORS:
-                                words[0].find("predecessors")!=string::npos? Digraph::PREDECESSORS:
-                                Digraph::DESCENDANTS) );
-                int begin= (words.size()==3? 0: 1);
-                cmdOk("%d nodes, %fs%s", (int)resultNodes.size()-begin>=0? resultNodes.size()-begin: 0, getTime()-d, outRedir? "": ":");
-                for(uint32_t i= begin; i<resultNodes.size(); i++)
-//                    fprintf(outFile, "%u,%u\n", resultNodes[i], nodeNiveau[resultNodes[i]]);
-					fprintf(outFile, "%u\n", resultNodes[i]);
-                fprintf(outFile, "\n");
-            }
-            //c: command: add-arcs
-            //c: 	read a data set of arcs and add them to the graph. empty line terminates the set.
-            //c:
-            else if(words[0]=="add-arcs")
-            {
-                if(words.size()!=1 || !(hasDataSet||inRedir) || outRedir)
-                {
-                    cmdFail("syntax error");
-                    return;
-                }
-                FILE *f= (inRedir? inRedir: stdin);
-                uint32_t oldSize= myGraph->size();
-                vector<uint32_t> record;
-                for(int lineno= 0; ; lineno++)
-                {
-                    if(!readUintRecord(f, record))
+                    case CliCommand::RT_NODE_LIST:
                     {
-                        cmdErr("couldn't read data set");
-                        return;
+                        vector<uint32_t> result;
+                        if( ((CliCommand_RTNodeList*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile, result) )
+                        {
+                            for(size_t i= 0; i<result.size(); i++)
+                                fprintf(outFile, "%u\n", result[i]);
+                            fprintf(outFile, "\n");
+                        }
+                        break;
                     }
-                    else if(record.size()==0)
+                    case CliCommand::RT_ARC_LIST:
                     {
-                        myGraph->resort(oldSize);
-                        cmdOk();
-                        return;
+                        // todo.
+                        break;
                     }
-                    else if(record.size()!=2)
-                    {
-                        cmdErr("invalid data record");
-                        return;
-                    }
-                    else
-                    {
-                        if(record[0]==0 || record[1]==0) { cmdErr("invalid data record"); return; }
-                        myGraph->addArc( record[0], record[1], false );
-                    }
-                    record.clear();
+                    case CliCommand::RT_OTHER:
+                        ((CliCommand_RTOther*)(cmd))->execute(words, this, myGraph, hasDataSet, inFile, outFile);
+                        break;
+                    case CliCommand::RT_NONE:
+                        if(outFile!=stdout) cliFailure("output redirection not possible for this command.\n");
+                        else ((CliCommand_RTVoid*)cmd)->execute(words, this, myGraph, hasDataSet, inFile);
+                        break;
                 }
             }
+            else
+                cliFailure("no such command.\n");
+        }
+
+        // get i/o redirection filename from command line
+        static char *getRedirFilename(char *str)
+        {
+            while(isspace(*str)) str++;
+            char *s= str;
+            while(*s && !isspace(*s)) s++;
+            *s= 0;
+            return str;
+        }
+
+        // split a string into words using given delimiters
+        static vector<string> splitString(char *str, const char *delim= " \n\t,")
+        {
+            vector<string> ret;
+            while(true)
+            {
+                while(*str && strchr(delim, *str)) str++;
+                if(!*str) return ret;
+                char *start= str;
+                while(*str && !strchr(delim, *str)) str++;
+                if(*str) *str++= 0;
+                ret.push_back(string(start));
+            }
+        }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccListNeighbors
+// template class for list-* commands
+template<Digraph::BFSType searchType, bool recursive>
+    class ccListNeighbors: public CliCommand_RTNodeList
+{
+    private:
+        string name;
+
+    public:
+        ccListNeighbors(const char *_name): name(_name)
+        { }
+
+        string getName()            { return name; }
+        string getSynopsis()        { return getName() + " NODE" + (recursive? " DEPTH": ""); }
+        string getHelpText()
+        {
+            string what= (searchType==Digraph::NEIGHBORS? "neighbors":
+                          searchType==Digraph::PREDECESSORS? "predecessors": "successors");
+            return "list " + (recursive?
+                              "NODE and its " + what + " recursively up to DEPTH." :
+                              "direct " + what + " of NODE.");
+        }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+                     vector<uint32_t> &result)
+        {
+            if( (words.size()!=(recursive? 3: 2)) || hasDataSet)
+            {
+                syntaxError();
+                return false;
+            }
+            map<uint32_t,uint32_t> nodeNiveau;
+            double d= getTime();
+            graph->doBFS(result, nodeNiveau, Cli::parseUint(words[1]),
+                         (recursive? Cli::parseUint(words[2]): 1),
+                         searchType);
+            if(!recursive && result.size()) result.erase(result.begin());
+            cliSuccess("%u nodes, %fs%s\n", result.size(), getTime()-d, outFile==stdout? ":": "");
+            return true;
+        }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccHelp
+// help command
+class ccHelp: public CliCommand_RTOther
+{
+    private:
+        Cli *cli;
+
+    public:
+        ccHelp(Cli *_cli): cli(_cli)
+        { }
+
+        string getName()            { return "help"; }
+        string getSynopsis()        { return getName() + " [COMMAND]"; }
+        string getHelpText()        { return "get help on COMMAND/on all commands."; }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        {
+            if(words.size()>2 || hasDataSet)
+            {
+                syntaxError();
+                return false;
+            }
+            if(words.size()==2)
+            {
+                CliCommand *cmd= cli->findCommand(words[1]);
+                if(!cmd)
+                {
+                    cliFailure("No such command.\n");
+                    return false;
+                }
+                cliSuccess(":\n");
+                cout << "# " << cmd->getSynopsis() << endl << "# " << cmd->getHelpText() << endl;
+            }
+            else
+            {
+                cliSuccess("available commands:\n");
+                vector<CliCommand*> &commands= cli->getCommands();
+                for(unsigned i= 0; i<commands.size(); i++)
+                    cout << "# " << commands[i]->getSynopsis() << endl;
+            }
+            cout << endl;
+            return true;
+        }
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccAddArcs
+// add-arcs command
+class ccAddArcs: public CliCommand_RTVoid
+{
+    public:
+        string getName()            { return "add-arcs"; }
+        string getSynopsis()        { return getName() + " {:|<}"; }
+        string getHelpText()        { return "read a data set of arcs and add them to the graph. empty line terminates the set."; }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if(words.size()!=1 || !(hasDataSet||(inFile!=stdin)))
+            {
+                syntaxError();
+                return false;
+            }
+            uint32_t oldSize= graph->size();
+            vector<uint32_t> record;
+            for(int lineno= 0; ; lineno++)
+            {
+                if(!Cli::readUintRecord(inFile, record))
+                {
+                    cliError("couldn't read data set\n");
+                    return false;
+                }
+                else if(record.size()==0)
+                {
+                    graph->resort(oldSize);
+                    cliSuccess("\n");
+                    return true;
+                }
+                else if(record.size()!=2)
+                {
+                    cliError("invalid data record\n");
+                    return true;
+                }
+                else
+                {
+                    if(record[0]==0 || record[1]==0) { cliError("invalid data record\n"); return false; }
+                    graph->addArc( record[0], record[1], false );
+                }
+                record.clear();
+            }
+        }
+};
+
+
+/*
             //c: command: erase-arcs
             //c: 	read a data set of arcs and erase them from the graph. empty line terminates the set.
             //c:
@@ -648,6 +855,52 @@ class Cli
                     record.clear();
                 }
             }
+*/
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccEraseArcs
+// erase-arcs command
+class ccEraseArcs: public CliCommand_RTVoid
+{
+    public:
+        string getName()            { return "erase-arcs"; }
+        string getSynopsis()        { return getName() + " {:|<}"; }
+        string getHelpText()        { return "read a data set of arcs and erase them from the graph. empty line terminates the set."; }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if( words.size()!=1 || !(hasDataSet||(inFile!=stdin)) )
+            {
+                syntaxError();
+                return false;
+            }
+            vector<uint32_t> record;
+            while(true)
+            {
+                if(!Cli::readUintRecord(inFile, record))
+                {
+                    cliError("couldn't read data set\n");
+                    return false;
+                }
+                else if(record.size()!=2)
+                {
+                    cliError("invalid data record\n");
+                    return false;
+                }
+                else if(record.size()==0)
+                {
+                    cliSuccess("\n");
+                    return true;
+                }
+                graph->eraseArc( record[0], record[1] );
+                record.clear();
+            }
+        }
+};
+
+
+/*
             //c: command: replace-predecessors NODE
             //c: 	read data set of nodes, replace predecessors of NODE with given set.
             //c:
@@ -684,6 +937,63 @@ class Cli
                 else
                     cmdErr("replaceNeighbors failed.");
             }
+*/
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccReplaceNeighbors
+// replace-predecessors/replace-successors commands
+template<Digraph::BFSType searchType>
+    class ccReplaceNeighbors: public CliCommand_RTVoid
+{
+    private:
+        string name;
+
+    public:
+        ccReplaceNeighbors(const char *_name): name(_name)
+        { }
+
+        string getName()            { return name; }
+        string getSynopsis()        { return getName() + " NODE {:|<}"; }
+        string getHelpText()
+        {
+            return string("read data set of nodes and replace ") +
+                   (searchType==Digraph::PREDECESSORS? "predecessors": "successors") +
+                   " of NODE with given set.";
+        }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if(words.size()!=2 || !(hasDataSet||(inFile!=stdin)))
+            {
+                syntaxError();
+                return;
+            }
+            vector<uint32_t> record, newNeighbors;
+            while(true)
+            {
+                if(!Cli::readUintRecord(inFile, record))
+                {
+                    cliError("couldn't read data set\n");
+                    return;
+                }
+                if(record.size()==0) break;
+                if(record.size()!=1)
+                {
+                    cliError("invalid data record\n");
+                    return;
+                }
+                newNeighbors.push_back(record[0]);
+                record.clear();
+            }
+            if(graph->replaceNeighbors(Cli::parseUint(words[1]), newNeighbors, searchType==Digraph::DESCENDANTS))
+                cliSuccess("\n");
+            else
+                cliError("internal error: Digraph::replaceNeighbors() failed.\n");
+        }
+};
+
+
+/*
             //c: command: clear
             //c: 	clear the graph model.
             //c:
@@ -701,106 +1011,71 @@ class Cli
                 cmdOk();
                 doQuit= true;
             }
-            else if(words[0]=="list-by-tail")
-            {
-                myGraph->listArcsByTail(parseUint(words[1]), parseUint(words[2]));
-                cmdOk();
-            }
-            else if(words[0]=="list-by-head")
-            {
-                myGraph->listArcsByHead(parseUint(words[1]), parseUint(words[2]));
-                cmdOk();
-            }
-            else if(words[0]=="print-stats")
-            {
-                myGraph->printStats();
-                cmdOk();
-            }
-            else
-            {
-                cmdFail("unknown command");
-            }
-        }
+*/
 
-        // convert string to unsigned int
-        static uint32_t parseUint(string str)
-        {
-            return strtoul(str.c_str(), 0, 0);
-        }
 
-        // get i/o redirection filename from command line
-        static char *getRedirFilename(char *str)
-        {
-            while(isspace(*str)) str++;
-            char *s= str;
-            while(*s && !isspace(*s)) s++;
-            *s= 0;
-            return str;
-        }
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccClear
+// clear command.
+class ccClear: public CliCommand_RTVoid
+{
+    public:
+        string getName()            { return "clear"; }
+        string getSynopsis()        { return getName(); }
+        string getHelpText()        { return "clear the graph model."; }
 
-        // check if string forms a valid unsigned integer
-        bool isValidUint(const string& s)
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
-            // allow only positive decimal digits
-            for(int i= 0; s[i]; i++)
-                if( !isdigit(s[i]) ) return false;
-            return true;
-        }
-
-        // parse a data record in text form
-        bool readUintRecord(FILE *f, vector<uint32_t> &ret)
-        {
-            char line[1024];
-            uint32_t n;
-            if(fgets(line, 1024, f)==0)
+            if(words.size()!=1 || hasDataSet || (inFile!=stdin))
             {
-                if(!feof(f)) return false;
-                else return true;
+                syntaxError();
+                return false;
             }
-            if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;
-            vector<string> strings= splitString(line);
-            for(uint32_t i= 0; i<strings.size(); i++)
-            {
-                if(!isValidUint(strings[i])) return false;
-                ret.push_back(parseUint(strings[i]));
-            }
-            return true;
-        }
-
-        // print success/failure/error messages
-        void cmdOk(const char *msg= "", ...)
-        {
-            printf("OK. ");
-            va_list ap;
-            va_start(ap, msg);
-            vprintf(msg, ap);
-            va_end(ap);
-            puts("");
-        }
-        void cmdFail(const char *msg= "")
-        {
-            printf("FAILED! %s\n", msg);
-        }
-        void cmdErr(const char *msg= "")
-        {
-            printf("ERROR! %s\n", msg);
-        }
-
-        // split a string into words using given delimiters
-        vector<string> splitString(char *str, const char *delim= " \n\t,")
-        {
-            vector<string> ret;
-            while(true)
-            {
-                while(*str && strchr(delim, *str)) str++;
-                if(!*str) return ret;
-                char *start= str;
-                while(*str && !strchr(delim, *str)) str++;
-                if(*str) *str++= 0;
-                ret.push_back(string(start));
-            }
+            graph->clear();
+            cliSuccess("\n");
         }
 };
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccShutdown
+// shutdown command.
+class ccShutdown: public CliCommand_RTVoid
+{
+    private:
+        string name;
+
+    public:
+        string getName()            { return name; }
+        string getSynopsis()        { return getName(); }
+        string getHelpText()        { return "shutdown the graph processor."; }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if(words.size()!=1 || hasDataSet|| (inFile!=stdin))
+            {
+                syntaxError();
+                return false;
+            }
+            cliSuccess("\n");
+        }
+};
+
+
+
+
+Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
+{
+    commands.push_back(new ccHelp(this));
+    commands.push_back(new ccAddArcs());
+    commands.push_back(new ccEraseArcs());
+    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, true>("list-successors"));
+    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, true>("list-predecessors"));
+    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, true>("list-neighbors"));
+    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, false>("list-successors-nonrecursive"));
+    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, false>("list-predecessors-nonrecursive"));
+    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, false>("list-neighbors-nonrecursive"));
+}
 
 
 
