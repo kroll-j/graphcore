@@ -15,6 +15,9 @@
 #include <pthread.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <libintl.h>
+
+#define _(string) gettext(string)
 
 using namespace std;
 
@@ -442,9 +445,9 @@ class Digraph
 #define SUCCESS_STR "OK."
 #define FAIL_STR "FAILED!"
 #define ERROR_STR "ERROR!"
-#define cliSuccess(x...) printf(SUCCESS_STR " " x)
-#define cliFailure(x...) printf(FAIL_STR " " x)
-#define cliError(x...) printf(ERROR_STR " " x)
+#define cliSuccess(x...) printf(SUCCESS_STR " "), printf(x)
+#define cliFailure(x...) printf(FAIL_STR " "), printf(x)
+#define cliError(x...) printf(ERROR_STR " "), printf(x)
 
 // abstract base class for cli commands
 class CliCommand
@@ -542,7 +545,7 @@ class Cli
                     *d++= 0;
                     if(!(outRedir= fopen(getRedirFilename(d), "w")))
                     {
-                        cliFailure("couldn't open output file\n");
+                        cliFailure( _("couldn't open output file\n") );
                         continue;
                     }
                 }
@@ -552,7 +555,7 @@ class Cli
                     *d++= 0;
                     if(!(inRedir= fopen(getRedirFilename(d), "r")))
                     {
-                        cliFailure("couldn't open input file\n");
+                        cliFailure( _("couldn't open input file\n") );
                         continue;
                     }
                 }
@@ -612,7 +615,7 @@ class Cli
             return true;
         }
 
-        // like readUintRecord(), also check that node IDs are in valid range (currently 1..UINT_MAX)
+        // like readUintRecord(), and also check that integers are in valid range for node IDs (currently 1..uint32_max)
         static bool readNodeIDRecord(FILE *f, vector<uint32_t> &ret)
         {
             if(!readUintRecord(f, ret)) return false;
@@ -675,12 +678,12 @@ class Cli
                         ((CliCommand_RTOther*)(cmd))->execute(words, this, myGraph, hasDataSet, inFile, outFile);
                         break;
                     case CliCommand::RT_NONE:
-                        if(outFile!=stdout) cliFailure("output redirection not possible for this command.\n");
+                        if(outFile!=stdout) cliFailure(_("output redirection not possible for this command.\n"));
                         else ((CliCommand_RTVoid*)cmd)->execute(words, this, myGraph, hasDataSet, inFile);
                         break;
                 }
             }
-            else cliFailure("no such command.\n");
+            else cliFailure(_("no such command.\n"));
         }
 
         // get i/o redirection filename from command line
@@ -723,14 +726,21 @@ template<Digraph::BFSType searchType, bool recursive>
         { }
 
         string getName()            { return name; }
-        string getSynopsis()        { return getName() + " NODE" + (recursive? " DEPTH": ""); }
+        string getSynopsis()        { return getName() + _(" NODE") + (recursive? _(" DEPTH"): ""); }
         string getHelpText()
         {
-            string what= (searchType==Digraph::NEIGHBORS? "neighbors":
-                          searchType==Digraph::PREDECESSORS? "predecessors": "successors");
-            return "list " + (recursive?
-                              "NODE and its " + what + " recursively up to DEPTH." :
-                              "direct " + what + " of NODE.");
+            if(recursive) switch(searchType)
+            {
+                case Digraph::NEIGHBORS: return _("list NODE and its neighbors recursively up to DEPTH.");
+                case Digraph::PREDECESSORS: return _("list NODE and its predecessors recursively up to DEPTH.");
+                case Digraph::DESCENDANTS: return _("list NODE and its successors recursively up to DEPTH.");
+            }
+            else switch(searchType)
+            {
+                case Digraph::NEIGHBORS: return _("list direct neighbors of NODE.");
+                case Digraph::PREDECESSORS: return _("list direct predecessors of NODE.");
+                case Digraph::DESCENDANTS: return _("list direct successors of NODE.");
+            }
         }
 
         bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
@@ -748,7 +758,7 @@ template<Digraph::BFSType searchType, bool recursive>
                          (recursive? Cli::parseUint(words[2]): 1),
                          searchType);
             if(!recursive && result.size()) result.erase(result.begin());
-            cliSuccess("%u nodes, %fs%s\n", result.size(), getTime()-d, outFile==stdout? ":": "");
+            cliSuccess(_("%u nodes, %fs%s\n"), result.size(), getTime()-d, outFile==stdout? ":": "");
             return true;
         }
 };
@@ -766,8 +776,8 @@ class ccHelp: public CliCommand_RTOther
         { }
 
         string getName()            { return "help"; }
-        string getSynopsis()        { return getName() + " [COMMAND]"; }
-        string getHelpText()        { return "get help on COMMAND/list commands."; }
+        string getSynopsis()        { return getName() + _(" [COMMAND]"); }
+        string getHelpText()        { return _("get help on COMMAND/list commands."); }
 
         bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
@@ -781,7 +791,7 @@ class ccHelp: public CliCommand_RTOther
                 CliCommand *cmd= cli->findCommand(words[1]);
                 if(!cmd)
                 {
-                    cliFailure("%s: no such command.\n", words[1].c_str());
+                    cliFailure(_("%s: no such command.\n"), words[1].c_str());
                     return false;
                 }
                 cliSuccess(":\n");
@@ -789,7 +799,7 @@ class ccHelp: public CliCommand_RTOther
             }
             else
             {
-                cliSuccess("available commands:\n");
+                cliSuccess(_("available commands:\n"));
                 vector<CliCommand*> &commands= cli->getCommands();
                 for(unsigned i= 0; i<commands.size(); i++)
                     cout << "# " << commands[i]->getSynopsis() << endl;
@@ -808,7 +818,7 @@ class ccAddArcs: public CliCommand_RTVoid
     public:
         string getName()            { return "add-arcs"; }
         string getSynopsis()        { return getName() + " {:|<}"; }
-        string getHelpText()        { return "read a data set of arcs and add them to the graph. empty line terminates the set."; }
+        string getHelpText()        { return _("read a data set of arcs and add them to the graph. empty line terminates the set."); }
 
         bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
@@ -823,7 +833,7 @@ class ccAddArcs: public CliCommand_RTVoid
             {
                 if(!Cli::readNodeIDRecord(inFile, record))
                 {
-                    cliError("couldn't read data set\n");
+                    cliError(_("couldn't read data set\n"));
                     return false;
                 }
                 else if(record.size()==0)
@@ -834,12 +844,12 @@ class ccAddArcs: public CliCommand_RTVoid
                 }
                 else if(record.size()!=2)
                 {
-                    cliError("invalid data record in line %d\n", lineno);
+                    cliError(_("invalid data record in line %d\n"), lineno);
                     return true;
                 }
                 else
                 {
-                    if(record[0]==0 || record[1]==0) { cliError("invalid data record\n"); return false; }
+                    if(record[0]==0 || record[1]==0) { cliError(_("invalid data record\n")); return false; }
                     graph->addArc( record[0], record[1], false );
                     record.clear();
                 }
@@ -893,7 +903,7 @@ class ccEraseArcs: public CliCommand_RTVoid
     public:
         string getName()            { return "erase-arcs"; }
         string getSynopsis()        { return getName() + " {:|<}"; }
-        string getHelpText()        { return "read a data set of arcs and erase them from the graph. empty line terminates the set."; }
+        string getHelpText()        { return _("read a data set of arcs and erase them from the graph. empty line terminates the set."); }
 
         bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
@@ -907,7 +917,7 @@ class ccEraseArcs: public CliCommand_RTVoid
             {
                 if(!Cli::readNodeIDRecord(inFile, record))
                 {
-                    cliError("couldn't read data set\n");
+                    cliError(_("couldn't read data set\n"));
                     return false;
                 }
                 else if(record.size()==0)
@@ -917,7 +927,7 @@ class ccEraseArcs: public CliCommand_RTVoid
                 }
                 else if(record.size()!=2)
                 {
-                    cliError("invalid data record\n");
+                    cliError(_("invalid data record\n"));
                     return false;
                 }
                 graph->eraseArc( record[0], record[1] );
@@ -980,12 +990,15 @@ template<Digraph::BFSType searchType>
         { }
 
         string getName()            { return name; }
-        string getSynopsis()        { return getName() + " NODE {:|<}"; }
+        string getSynopsis()        { return getName() + _(" NODE") + " {:|<}"; }
         string getHelpText()
         {
-            return string("read data set of nodes and replace ") +
-                   (searchType==Digraph::PREDECESSORS? "predecessors": "successors") +
-                   " of NODE with given set.";
+            switch(searchType)
+            {
+                case Digraph::PREDECESSORS: return _("read data set of nodes and replace predecessors of NODE with given set.");
+                case Digraph::DESCENDANTS: return _("read data set of nodes and replace successors of NODE with given set.");
+                default:    ;
+            }
         }
 
         bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
@@ -1001,13 +1014,13 @@ template<Digraph::BFSType searchType>
             {
                 if(!Cli::readNodeIDRecord(inFile, record))
                 {
-                    cliError("couldn't read data set\n");
+                    cliError(_("couldn't read data set\n"));
                     return false;
                 }
                 if(record.size()==0) break;
                 if(record.size()!=1)
                 {
-                    cliError("invalid data record\n");
+                    cliError(_("invalid data record\n"));
                     return false;
                 }
                 newNeighbors.push_back(record[0]);
@@ -1020,7 +1033,7 @@ template<Digraph::BFSType searchType>
             }
             else
             {
-                cliError("internal error: Digraph::replaceNeighbors() failed.\n");
+                cliError(_("internal error: Digraph::replaceNeighbors() failed.\n"));
                 return true;
             }
         }
@@ -1056,7 +1069,7 @@ class ccClear: public CliCommand_RTVoid
     public:
         string getName()            { return "clear"; }
         string getSynopsis()        { return getName(); }
-        string getHelpText()        { return "clear the graph model."; }
+        string getHelpText()        { return _("clear the graph model."); }
 
         bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
@@ -1080,7 +1093,7 @@ class ccShutdown: public CliCommand_RTVoid
     public:
         string getName()            { return "shutdown"; }
         string getSynopsis()        { return getName(); }
-        string getHelpText()        { return "shutdown the graph processor."; }
+        string getHelpText()        { return _("shutdown the graph processor."); }
 
         bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
@@ -1089,7 +1102,7 @@ class ccShutdown: public CliCommand_RTVoid
                 syntaxError();
                 return false;
             }
-            cliSuccess("shutting down pid %d.\n", getpid());
+            cliSuccess(_("shutting down pid %d.\n"), getpid());
             cli->quit();
             return true;
         }
@@ -1119,6 +1132,10 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
 
 int main()
 {
+    setlocale(LC_ALL, "");
+    bindtextdomain("graphcore", "./messages");
+    textdomain("graphcore");
+
     Digraph graph;
     Cli cli(&graph);
 

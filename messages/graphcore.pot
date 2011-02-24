@@ -1,0 +1,137 @@
+# Message template file for the graphcore program.
+# Copyright (C) Wikimedia Deutschland, created by Johannes Kroll in 2011
+# This file is distributed under the same license as the graphcore package.
+# Johannes Kroll <removetheanimal:jkroll@lavabitgiraffe.com>, 2011.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: graphcore\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2011-02-23 22:12+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/main.cpp:548
+msgid "couldn't open output file\n"
+msgstr ""
+
+#: src/main.cpp:558
+msgid "couldn't open input file\n"
+msgstr ""
+
+#: src/main.cpp:681
+msgid "output redirection not possible for this command.\n"
+msgstr ""
+
+#: src/main.cpp:686
+msgid "no such command.\n"
+msgstr ""
+
+#: src/main.cpp:729 src/main.cpp:993
+msgid " NODE"
+msgstr ""
+
+#: src/main.cpp:729
+msgid " DEPTH"
+msgstr ""
+
+#: src/main.cpp:734
+msgid "list NODE and its neighbors recursively up to DEPTH."
+msgstr ""
+
+#: src/main.cpp:735
+msgid "list NODE and its predecessors recursively up to DEPTH."
+msgstr ""
+
+#: src/main.cpp:736
+msgid "list NODE and its successors recursively up to DEPTH."
+msgstr ""
+
+#: src/main.cpp:740
+msgid "list direct neighbors of NODE."
+msgstr ""
+
+#: src/main.cpp:741
+msgid "list direct predecessors of NODE."
+msgstr ""
+
+#: src/main.cpp:742
+msgid "list direct successors of NODE."
+msgstr ""
+
+#: src/main.cpp:761
+#, c-format
+msgid "%u nodes, %fs%s\n"
+msgstr ""
+
+#: src/main.cpp:779
+msgid " [COMMAND]"
+msgstr ""
+
+#: src/main.cpp:780
+msgid "get help on COMMAND/list commands."
+msgstr ""
+
+#: src/main.cpp:794
+#, c-format
+msgid "%s: no such command.\n"
+msgstr ""
+
+#: src/main.cpp:802
+msgid "available commands:\n"
+msgstr ""
+
+#: src/main.cpp:821
+msgid ""
+"read a data set of arcs and add them to the graph. empty line terminates the "
+"set."
+msgstr ""
+
+#: src/main.cpp:836 src/main.cpp:920 src/main.cpp:1017
+msgid "couldn't read data set\n"
+msgstr ""
+
+#: src/main.cpp:847
+#, c-format
+msgid "invalid data record in line %d\n"
+msgstr ""
+
+#: src/main.cpp:852 src/main.cpp:930 src/main.cpp:1023
+msgid "invalid data record\n"
+msgstr ""
+
+#: src/main.cpp:906
+msgid ""
+"read a data set of arcs and erase them from the graph. empty line terminates "
+"the set."
+msgstr ""
+
+#: src/main.cpp:998
+msgid "read data set of nodes and replace predecessors of NODE with given set."
+msgstr ""
+
+#: src/main.cpp:999
+msgid "read data set of nodes and replace successors of NODE with given set."
+msgstr ""
+
+#: src/main.cpp:1036
+msgid "internal error: Digraph::replaceNeighbors() failed.\n"
+msgstr ""
+
+#: src/main.cpp:1072
+msgid "clear the graph model."
+msgstr ""
+
+#: src/main.cpp:1096
+msgid "shutdown the graph processor."
+msgstr ""
+
+#: src/main.cpp:1105
+#, c-format
+msgid "shutting down pid %d.\n"
+msgstr ""
