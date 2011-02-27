@@ -13,8 +13,10 @@ DOMAIN=graphcore
 # find languages
 LANGUAGES=$(cd messages; find -mindepth 1 -maxdepth 1 -type d -execdir basename '{}' ';')
 
+SRC=$(find src -name '*.cpp'; find src -name '*.h')
+
 TMPPOT=$(mktemp)
-xgettext -d graphcore src/main.cpp --keyword=_ -o - | sed "s/CHARSET/UTF-8/" > $TMPPOT &&
+xgettext -d graphcore $SRC --keyword=_ -o - | sed "s/CHARSET/UTF-8/" > $TMPPOT &&
 echo -n "merging new strings into template file $MSGDIR/$DOMAIN.pot " &&
 msgmerge -U $MSGDIR/$DOMAIN.pot $TMPPOT &&
 rm $TMPPOT &&

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: graphcore\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-02-24 17:54+0100\n"
+"POT-Creation-Date: 2011-02-24 18:36+0100\n"
 "PO-Revision-Date: 2011-02-23 22:46+0100\n"
 "Last-Translator: johannes <johannes@arcadia>\n"
 "Language-Team: English\n"
@@ -140,3 +140,11 @@ msgstr "shutdown the graph processor."
 #, c-format
 msgid "shutting down pid %d.\n"
 msgstr "shutting down pid %d.\n"
+
+#, fuzzy
+#~ msgid "list-predecessors"
+#~ msgstr "list direct predecessors of NODE."
+
+#, fuzzy
+#~ msgid "list-successors"
+#~ msgstr "list direct successors of NODE."

@@ -1,15 +1,16 @@
 // Graph Processor core.
 // (c) Wikimedia Deutschland, written by Johannes Kroll in 2011
-#include <string.h>
-#include <stdarg.h>
-#include <iostream>
+#include <cstring>
+#include <cstdarg>
 #include <cstdio>
+#include <iostream>
 #include <vector>
 #include <deque>
 #include <queue>
 #include <set>
 #include <map>
 #include <algorithm>
+#include <functional>
 #include <stdint.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -17,9 +18,13 @@
 #include <readline/history.h>
 #include <libintl.h>
 
+using namespace std;
+
+
 #define _(string) gettext(string)
 
-using namespace std;
+#define U32MAX (0xFFFFFFFF)
+
 
 // time measurement
 double getTime()
@@ -42,6 +47,9 @@ class Digraph
         struct arc
         {
             uint32_t tail, head;
+
+            arc(): tail(0), head(0) {}
+            arc(uint32_t _tail, uint32_t _head): tail(_tail), head(_head) {}
             bool operator< (arc a) const
             {
                 return (a.tail==tail? a.head<head: a.tail<tail);
@@ -95,13 +103,13 @@ class Digraph
             return arcsByTail.size();
         }
 
-        enum BFSType
+        enum NodeRelation
         {
             NEIGHBORS= 0, PREDECESSORS, DESCENDANTS
         };
         // breitensuche / breadth-first-search
         void doBFS(vector<uint32_t> &resultNodes, map<uint32_t,uint32_t> &niveau,
-                   uint32_t startNode, uint32_t depth, BFSType searchType= NEIGHBORS)
+                   uint32_t startNode, uint32_t depth, NodeRelation searchType= NEIGHBORS)
         {
             NeighborIterator it(*this);
             it.startNeighbors(startNode);
@@ -116,9 +124,7 @@ class Digraph
                 uint32_t curNiveau= niveau.find(next)->second;
                 if(curNiveau==depth) break;
                 Q.pop();
-                if(searchType==PREDECESSORS) it.startPredecessors(next);
-                else if(searchType==DESCENDANTS) it.startDescendants(next);
-                else it.startNeighbors(next);
+                it.start(next, searchType);
                 for(; !it.finished(); ++it)
                 {
                     uint32_t neighbor= *it;
@@ -131,6 +137,110 @@ class Digraph
                 }
             }
         }
+
+
+        struct BFSnode
+        {
+            uint32_t niveau;
+            uint32_t pathNext;
+            uint32_t pathLength;
+            BFSnode():
+                niveau(0), pathNext(0), pathLength(0) { }
+            BFSnode(uint32_t _niveau, uint32_t _pathNext, uint32_t _pathLength):
+                niveau(_niveau), pathNext(_pathNext), pathLength(_pathLength) { }
+        };
+
+        template<typename COMPARE>
+            uint32_t doBFS2(uint32_t startNode, uint32_t compArg, uint32_t depth,
+                            vector<uint32_t> &resultNodes,
+                            map<uint32_t,BFSnode> &nodeInfo,
+                            NodeRelation searchType= PREDECESSORS)
+        {
+            NeighborIterator it(*this);
+            it.startNeighbors(startNode);
+            if(it.finished()) return 0;	// node does not exist
+            queue<uint32_t> Q;
+            resultNodes.push_back(startNode);
+            nodeInfo[startNode]= BFSnode(0, 0, 0);
+            Q.push(startNode);
+            while(Q.size())
+            {
+                uint32_t nextNode= Q.front();
+                uint32_t curNiveau= nodeInfo.find(nextNode)->second.niveau;
+                if(curNiveau==depth) break;
+                Q.pop();
+                it.start(nextNode, searchType);
+                for(; !it.finished(); ++it)
+                {
+                    uint32_t neighbor= *it;
+                    if(nodeInfo.find(neighbor)==nodeInfo.end()) // if we didn't already visit this node
+                    {
+                        Q.push(neighbor);
+                        // insert this node
+                        resultNodes.push_back(neighbor);
+                        nodeInfo[neighbor]= BFSnode(curNiveau+1, nextNode, nodeInfo[nextNode].pathLength+1);
+                        if(COMPARE()(*this, neighbor, compArg)) return neighbor;
+                    }
+                }
+            }
+            return 0;
+        }
+
+        // is this a node with no predecessors?
+        bool isRoot(uint32_t node)
+        {
+            arcContainer::iterator it= findArcByHead(node);
+            return !(it==arcsByHead.end() || it->head==node);
+        }
+
+        // is this a node with no descendant?
+        bool isLeaf(uint32_t node)
+        {
+            arcContainer::iterator it= findArcByTail(node);
+            return !(it==arcsByTail.end() || it->tail==node);
+        }
+
+        // comparison operators for search function
+        struct findNode
+        {
+            bool operator() (Digraph &graph, uint32_t node, uint32_t compArg)
+            { return node==compArg; }
+        };
+        struct findRoot
+        {
+            bool operator() (Digraph &graph, uint32_t node, uint32_t compArg)
+            { return graph.isRoot(node); }
+        };
+        struct findAll
+        {
+            bool operator() (Digraph &graph, uint32_t node, uint32_t compArg)
+            { return false; }
+        };
+
+
+
+        void findRoots(vector<uint32_t> &result)
+        {
+            arcContainer::iterator it= arcsByTail.begin();
+            while(it!=arcsByTail.end())
+            {
+                uint32_t node= it->tail;
+                if(isRoot(node)) result.push_back(node);
+                while(it->tail==node && it!=arcsByTail.end()) it++;
+            }
+        }
+
+        void findLeaves(vector<uint32_t> &result)
+        {
+            arcContainer::iterator it= arcsByHead.begin();
+            while(it!=arcsByHead.end())
+            {
+                uint32_t node= it->head;
+                if(isLeaf(node)) result.push_back(node);
+                while(it->head==node && it!=arcsByHead.end()) it++;
+            }
+        }
+
 
         // erase an arc from the graph
         void eraseArc(uint32_t tail, uint32_t head)
@@ -186,17 +296,26 @@ class Digraph
             return true;
         }
 
-        // print some statistics about the graph
-        void printStats()
+        struct statInfo
         {
-            printf("%d arcs consuming %dMB of RAM\n", arcsByHead.size(), arcsByHead.size()*sizeof(arc)*2/(1024*1024));
+            string description;
+            size_t value;
+            statInfo(const char *desc, size_t val): description(desc), value(val) { }
+            statInfo(): description(""), value(0) { }
+        };
+        void getStats(map<string, statInfo> &result)
+        {
+            result["ArcCount"]= statInfo(_("number of arcs"), arcsByHead.size());
+            result["ArcRamKiB"]= statInfo(_("total RAM consumed by arc data, in KiB"), arcsByHead.size()*sizeof(arc)*2/1024);
             bool invalid= false;
-            if(arcsByHead.size()!=arcsByTail.size())
-                printf("array sizes don't match?!! (%d != %d)\n", arcsByHead.size(), arcsByTail.size()),
-                invalid= true;
             int size= arcsByHead.size();
             int numDups= 0;
-            uint32_t minNodeID= 0xFFFFFFFF, maxNodeID= 0;
+            uint32_t minNodeID= U32MAX, maxNodeID= 0;
+#define AVGNEIGHBORS
+#ifdef AVGNEIGHBORS // calculate average successors/predecessors per node. this takes a little long.
+            map<uint32_t,uint32_t> totalPredecessors;
+            map<uint32_t,uint32_t> totalSuccessors;
+#endif
             for(int i= 0; i<size; i++)
             {
                 arc &h= arcsByHead[i];
@@ -206,11 +325,29 @@ class Digraph
                 if(h.head && h.head<minNodeID) minNodeID= h.head;
                 if(h.tail>maxNodeID) maxNodeID= h.tail;
                 if(h.head>maxNodeID) maxNodeID= h.head;
+#ifdef AVGNEIGHBORS
+                totalPredecessors[h.head]++;
+                totalSuccessors[h.tail]++;
+#endif
             }
-            printf("lowest node ID: %u\ngreatest node ID: %u\n", minNodeID, maxNodeID);
-            if(numDups) printf("%d duplicate arcs found.\n", numDups);
-            if(invalid) puts("Graph data is invalid.");
-            else puts("Graph data looks okay.");
+
+#ifdef AVGNEIGHBORS
+            size_t s= 0;
+            for(map<uint32_t,uint32_t>::iterator it= totalPredecessors.begin(); it!=totalPredecessors.end(); it++)
+                s+= it->second;
+            if(s) s/= totalPredecessors.size();
+            result["AvgPredecessors"]= statInfo(_("average predecessors per node"), s);
+            s= 0;
+            for(map<uint32_t,uint32_t>::iterator it= totalSuccessors.begin(); it!=totalSuccessors.end(); it++)
+                s+= it->second;
+            if(s) s/= totalSuccessors.size();
+            result["AvgSuccessors"]= statInfo(_("average successors per node"), s);
+#endif
+
+            result["MinNodeID"]= statInfo(_("lowest node ID"), minNodeID==U32MAX? 0: minNodeID);
+            result["MaxNodeID"]= statInfo(_("greatest node ID"), maxNodeID);
+            result["NumDups"]= statInfo(_("number of duplicates found (must be zero)"), numDups);
+            result["DataInvalid"]= statInfo(_("nonzero if any obvious errors were found in graph data"), invalid);
         }
 
 
@@ -273,7 +410,7 @@ class Digraph
         }
 
 
-    private:
+    protected:
         typedef vector<arc> arcContainer;
         arcContainer arcsByTail, arcsByHead;
 
@@ -337,6 +474,13 @@ class Digraph
                     isFinished= checkFinished();
                 }
 
+                void start(uint32_t startNode, NodeRelation type)
+                {
+                    if(type==PREDECESSORS) startPredecessors(startNode);
+                    else if(type==DESCENDANTS) startDescendants(startNode);
+                    else startNeighbors(startNode);
+                }
+
                 void operator++()
                 {
                     if(isFinished) return;
@@ -397,14 +541,14 @@ class Digraph
         // find the position of first arc with given head (lower bound)
         arcContainer::iterator findArcByHead(uint32_t head)
         {
-            arc value= { 0, head };
+            arc value(0, head);
             return lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead);
         }
 
         // find the position of first arc with given tail (lower bound)
         arcContainer::iterator findArcByTail(uint32_t tail)
         {
-            arc value= { tail, 0 };
+            arc value(tail, 0);
             return lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail);
         }
 
@@ -494,6 +638,15 @@ class CliCommand_RTNodeList: public CliCommand
         ReturnType getReturnType() { return RT_NODE_LIST; }
         virtual bool execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                              vector<uint32_t> &result)= 0;
+};
+
+// cli commands which return an arc list data set.
+class CliCommand_RTArcList: public CliCommand
+{
+    public:
+        ReturnType getReturnType() { return RT_ARC_LIST; }
+        virtual bool execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+                             vector<Digraph::arc> &result)= 0;
 };
 
 // cli commands which return some other data set. execute() must print the result to outFile.
@@ -625,7 +778,7 @@ class Cli
         }
 
 
-    private:
+    protected:
         Digraph *myGraph;
         bool doQuit;
 
@@ -671,11 +824,17 @@ class Cli
                     }
                     case CliCommand::RT_ARC_LIST:
                     {
-                        // todo.
+                        vector<Digraph::arc> result;
+                        if( ((CliCommand_RTArcList*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile, result) )
+                        {
+                            for(size_t i= 0; i<result.size(); i++)
+                                fprintf(outFile, "%u,%u\n", result[i].tail, result[i].head);
+                            fprintf(outFile, "\n");
+                        }
                         break;
                     }
                     case CliCommand::RT_OTHER:
-                        ((CliCommand_RTOther*)(cmd))->execute(words, this, myGraph, hasDataSet, inFile, outFile);
+                        ((CliCommand_RTOther*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile);
                         break;
                     case CliCommand::RT_NONE:
                         if(outFile!=stdout) cliFailure(_("output redirection not possible for this command.\n"));
@@ -712,10 +871,11 @@ class Cli
         }
 };
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccListNeighbors
 // template class for list-* commands
-template<Digraph::BFSType searchType, bool recursive>
+template<Digraph::NodeRelation searchType, bool recursive>
     class ccListNeighbors: public CliCommand_RTNodeList
 {
     private:
@@ -752,16 +912,63 @@ template<Digraph::BFSType searchType, bool recursive>
                 syntaxError();
                 return false;
             }
-            map<uint32_t,uint32_t> nodeNiveau;
             double d= getTime();
+            #if 1
+            map<uint32_t,Digraph::BFSnode> nodeInfo;
+            graph->doBFS2<Digraph::findAll> (Cli::parseUint(words[1]), 0, (recursive? Cli::parseUint(words[2]): 1),
+                                             result, nodeInfo, searchType);
+            #else
+            map<uint32_t,uint32_t> nodeNiveau;
             graph->doBFS(result, nodeNiveau, Cli::parseUint(words[1]),
                          (recursive? Cli::parseUint(words[2]): 1),
                          searchType);
+            #endif
             if(!recursive && result.size()) result.erase(result.begin());
-            cliSuccess(_("%u nodes, %fs%s\n"), result.size(), getTime()-d, outFile==stdout? ":": "");
+            cliSuccess(_("%zu nodes, %fs%s\n"), result.size(), getTime()-d, outFile==stdout? ":": "");
             return true;
         }
 };
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccListNeighborless
+// list roots / leaves
+template<bool leaves>
+    class ccListNeighborless: public CliCommand_RTNodeList
+{
+    private:
+        string name;
+
+    public:
+        ccListNeighborless(const char *_name): name(_name)
+        { }
+
+        string getName()            { return name; }
+        string getSynopsis()        { return getName(); }
+        string getHelpText()
+        {
+            if(leaves)
+                return _("list leaf nodes (nodes without descendants).");
+            else
+                return _("list root nodes (nodes without predecessors).");
+        }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+                     vector<uint32_t> &result)
+        {
+            if( words.size()!=1 || hasDataSet )
+            {
+                syntaxError();
+                return false;
+            }
+            if(leaves) graph->findLeaves(result);
+            else graph->findRoots(result);
+            cliSuccess(_("%zu %s%s\n"), result.size(), (leaves? _("leaf nodes"): _("root nodes")),
+                       outFile==stdout? ":": "");
+            return true;
+        }
+};
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccHelp
@@ -811,6 +1018,44 @@ class ccHelp: public CliCommand_RTOther
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
+// ccStats
+// stats command
+class ccStats: public CliCommand_RTOther
+{
+    private:
+
+    public:
+        string getName()            { return "stats"; }
+        string getSynopsis()        { return getName(); }
+        string getHelpText()
+        {
+            string s= string(_("print some statistics about the graph in the form of a name,value data set.\n")) +
+                      "# " + _("names and their meanings:");
+            Digraph graph;
+            map<string, Digraph::statInfo> info;
+            graph.getStats(info);
+            for(map<string, Digraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
+                s+= "\n# " + i->first + "\t" + i->second.description;
+            return s;
+        }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        {
+            if(words.size()!=1 || hasDataSet)
+            {
+                syntaxError();
+                return false;
+            }
+            map<string, Digraph::statInfo> info;
+            graph->getStats(info);
+            for(map<string, Digraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
+                fprintf(outFile, "%s,%zu\n", i->first.c_str(), i->second.value);
+            return true;
+        }
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
 // ccAddArcs
 // add-arcs command
 class ccAddArcs: public CliCommand_RTVoid
@@ -829,7 +1074,7 @@ class ccAddArcs: public CliCommand_RTVoid
             }
             uint32_t oldSize= graph->size();
             vector<uint32_t> record;
-            for(int lineno= 1; ; lineno++)
+            for(unsigned lineno= 1; ; lineno++)
             {
                 if(!Cli::readNodeIDRecord(inFile, record))
                 {
@@ -844,7 +1089,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 }
                 else if(record.size()!=2)
                 {
-                    cliError(_("invalid data record in line %d\n"), lineno);
+                    cliError(_("invalid data record in line %u\n"), lineno);
                     return true;
                 }
                 else
@@ -856,43 +1101,6 @@ class ccAddArcs: public CliCommand_RTVoid
             }
         }
 };
-
-
-/*
-            //c: command: erase-arcs
-            //c: 	read a data set of arcs and erase them from the graph. empty line terminates the set.
-            //c:
-            else if(words[0]=="erase-arcs")
-            {
-                if(words.size()!=1 || !(hasDataSet||inRedir) || outRedir)
-                {
-                    cmdFail("syntax error");
-                    return;
-                }
-                FILE *f= (inRedir? inRedir: stdin);
-                vector<uint32_t> record;
-                while(true)
-                {
-                    if(!readUintRecord(f, record))
-                    {
-                        cmdErr("couldn't read data set");
-                        return;
-                    }
-                    if(record.size()==0)
-                    {
-                        cmdOk();
-                        return;
-                    }
-                    if(record.size()!=2)
-                    {
-                        cmdErr("invalid data record");
-                        return;
-                    }
-                    myGraph->eraseArc( record[1], record[0] );
-                    record.clear();
-                }
-            }
-*/
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -937,49 +1145,10 @@ class ccEraseArcs: public CliCommand_RTVoid
 };
 
 
-/*
-            //c: command: replace-predecessors NODE
-            //c: 	read data set of nodes, replace predecessors of NODE with given set.
-            //c:
-            //c: command: replace-successors NODE
-            //c: 	read data set of nodes, replace successors of NODE with given set.
-            //c:
-            else if( words[0]=="replace-predecessors" || words[0]=="replace-successors" )
-            {
-                if(words.size()!=2 || !(hasDataSet||inRedir) || outRedir)
-                {
-                    cmdFail("syntax error");
-                    return;
-                }
-                FILE *f= (inRedir? inRedir: stdin);
-                vector<uint32_t> record, newNeighbors;
-                while(true)
-                {
-                    if(!readUintRecord(f, record))
-                    {
-                        cmdErr("couldn't read data set");
-                        return;
-                    }
-                    if(record.size()==0) break;
-                    if(record.size()!=1)
-                    {
-                        cmdErr("invalid data record");
-                        return;
-                    }
-                    newNeighbors.push_back(record[0]);
-                    record.clear();
-                }
-                if(myGraph->replaceNeighbors(parseUint(words[1]), newNeighbors, words[0]=="replace-successors"))
-                    cmdOk();
-                else
-                    cmdErr("replaceNeighbors failed.");
-            }
-*/
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccReplaceNeighbors
 // replace-predecessors/replace-successors commands
-template<Digraph::BFSType searchType>
+template<Digraph::NodeRelation searchType>
     class ccReplaceNeighbors: public CliCommand_RTVoid
 {
     private:
@@ -1040,27 +1209,6 @@ template<Digraph::BFSType searchType>
 };
 
 
-/*
-            //c: command: clear
-            //c: 	clear the graph model.
-            //c:
-            else if(words[0]=="clear")
-            {
-                myGraph->clear();
-                cmdOk();
-            }
-            //c: command: quit
-            //c: command: q
-            //c: 	quit program.
-            //c:
-            else if(words[0]=="quit" || words[0]=="q")
-            {
-                cmdOk();
-                doQuit= true;
-            }
-*/
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccClear
 // clear command.
@@ -1109,6 +1257,68 @@ class ccShutdown: public CliCommand_RTVoid
 };
 
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccFindPath
+// find shortest path between nodes (findRoot==false) or path to nearest root node (findRoot==true)
+template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
+{
+    private:
+        string name;
+
+    public:
+        ccFindPath(const char *_name): name(_name)
+        { }
+
+        string getName()            { return name; }
+        string getSynopsis()        { return getName() + (findRoot? " X": " X Y"); }
+        string getHelpText()
+        {
+            if(findRoot)
+                return _("find the path from X to nearest root node. return data set of arcs representing the path.");
+            else
+                return _("find the shortest path from node X to node Y. return data set of arcs representing the path.");
+        }
+
+        bool execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, vector<Digraph::arc> &result)
+        {
+            if( hasDataSet || !Cli::isValidNodeID(words[1]) ||
+                (findRoot? (words.size()!=2):
+                           (words.size()!=3 || !Cli::isValidNodeID(words[2]))) )
+            {
+                syntaxError();
+                return false;
+            }
+            vector<uint32_t> nodes;
+            map<uint32_t,Digraph::BFSnode> nodeInfo;
+            uint32_t node;
+
+            if(findRoot)
+                node= graph->doBFS2<Digraph::findRoot> (Cli::parseUint(words[1]), 0, U32MAX,
+                                                        nodes, nodeInfo);
+            else
+                node= graph->doBFS2<Digraph::findNode> (Cli::parseUint(words[2]), Cli::parseUint(words[1]), U32MAX,
+                                                        nodes, nodeInfo);
+            if(node)
+            {
+                uint32_t next;
+                result.resize(nodeInfo[node].pathLength);
+                vector<Digraph::arc>::iterator it= result.begin();
+                while((next= nodeInfo[node].pathNext))
+                {
+                    *it++= Digraph::arc(node, next);
+                    node= next;
+                }
+                cliSuccess(_("%zu nodes visited, path length %zu\n"), nodes.size(), result.size());
+                return true;
+            }
+            printf("NONE.\n");
+            return false;
+        }
+};
+
+
+
+
 
 
 Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
@@ -1124,6 +1334,12 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
     commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, false>("list-predecessors-nonrecursive"));
     commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, false>("list-successors-nonrecursive"));
     commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, false>("list-neighbors-nonrecursive"));
+    commands.push_back(new ccFindPath<false>("find-path"));
+    commands.push_back(new ccFindPath<true>("find-root"));
+    commands.push_back(new ccListNeighborless<false>("list-roots"));
+    commands.push_back(new ccListNeighborless<true>("list-leaves"));
+    commands.push_back(new ccStats());
+
     commands.push_back(new ccClear());
     commands.push_back(new ccShutdown());
 }
