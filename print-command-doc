@@ -7,13 +7,21 @@
 
 COMMANDS=$((echo help | ./graphcore | grep ^#) | (while read line; do echo $line | cut -d ' ' -f 2; done))
 
+echo; echo; echo "commands:"; echo; echo; 
 for i in $COMMANDS; do
-	echo '*'$i'*'
+	echo -n "	- $i"; echo _; 
 done
 echo
 for i in $COMMANDS; do
-	echo $i:: ;
-	echo help $i | ./graphcore | grep ^# | sed 's/^# //'
+	echo ".. _$i:" ;
+	echo;
+	echo $i ;
+	echo; echo; 
+	echo '::';
+	echo; echo; 
+	echo help $i | ./graphcore | grep ^# | sed 's/^# /\t/' | 
+		(read firstline; echo "	syntax: $firstline"; while read line; do echo "	$line"; done);
+	echo;
 done
 
 
