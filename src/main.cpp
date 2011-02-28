@@ -814,14 +814,31 @@ class Cli
         CommandStatus execute(char *command, bool hasDataSet, FILE *inRedir, FILE *outRedir)
         {
             vector<string> words= splitString(command);
-            if(words.size()<1) return;
+            if(words.size()<1) return CMD_FAILURE;
 
             FILE *outFile= (outRedir? outRedir: stdout);
             FILE *inFile= (inRedir? inRedir: stdin);
             CliCommand *cmd= findCommand(words[0]);
 
+            vector<string>::iterator op= find(words.begin(), words.end(), "&&");
+            string opstring;
+            vector<string> words2;
+            if(op==words.end()) op= find(words.begin(), words.end(), "&&!");
+            if(op!=words.end())
+            {
+                opstring= *op;
+                words.erase(op);
+                while(op!=words.end())
+                    words2.push_back(*op), words.erase(op);
+            }
+
             if(cmd)
             {
+                if(!opstring.empty() && cmd->getReturnType()!=CliCommand::RT_NODE_LIST)
+                {
+                    cout << FAIL_STR << " " << _("operators not available for this return type.") << endl;
+                    return CMD_FAILURE;
+                }
                 CommandStatus status;
                 switch(cmd->getReturnType())
                 {
@@ -829,12 +846,63 @@ class Cli
                     {
                         vector<uint32_t> result;
                         status= ((CliCommand_RTNodeList*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile, result);
-                        cout << cmd->getStatusMessage();
-                        if(status==CMD_SUCCESS)
+                        if(!opstring.empty())
                         {
-                            for(size_t i= 0; i<result.size(); i++)
-                                fprintf(outFile, "%u\n", result[i]);
-                            fprintf(outFile, "\n");
+                            if(status==CMD_SUCCESS||status==CMD_NONE)
+                            {
+                                CliCommand *cmd2= findCommand(words2[0]);
+                                if(!cmd2)
+                                { printf("%s %s '%s'.\n", FAIL_STR, _("no such command"), words2[0].c_str()); break; }
+                                if(cmd2->getReturnType()!=cmd->getReturnType())
+                                { printf("%s %s.\n", FAIL_STR, _("return type mismatch")); break; }
+                                vector<uint32_t> result2;
+                                CommandStatus status2=
+                                    ((CliCommand_RTNodeList*)cmd2)->execute(words2, this, myGraph, hasDataSet, inFile, outFile, result2);
+                                if(status2==CMD_SUCCESS||status2==CMD_NONE)
+                                {
+                                    stable_sort(result.begin(), result.end());
+                                    stable_sort(result2.begin(), result2.end());
+                                    vector<uint32_t> mergeResult;
+                                    vector<uint32_t>::iterator end;
+                                    if(opstring=="&&")
+                                    {
+                                        mergeResult.resize(min(result.size(), result2.size()));
+                                        end= set_intersection(result.begin(), result.end(),
+                                                              result2.begin(), result2.end(),
+                                                              mergeResult.begin());
+                                    }
+                                    else if(opstring=="&&!")
+                                    {
+                                        mergeResult.resize(result.size());
+                                        end= set_difference(result.begin(), result.end(),
+                                                            result2.begin(), result2.end(),
+                                                            mergeResult.begin());
+                                    }
+                                    if(end!=mergeResult.begin())
+                                    {
+                                        cout << SUCCESS_STR <<
+                                            " L: " << result.size() << " R: " << result2.size() << " -> " << end-mergeResult.begin() <<
+                                            (outRedir? "": ":") << endl;
+                                        for(vector<uint32_t>::iterator it= mergeResult.begin(); it!=end; it++)
+                                            fprintf(outFile, "%u\n", *it);
+                                        fprintf(outFile, "\n");
+                                    }
+                                    else
+                                        cout << "NONE." << endl;
+                                }
+                                else { cout << cmd2->getStatusMessage(); break; }
+                            }
+                            else { cout << cmd->getStatusMessage(); break; }
+                        }
+                        else
+                        {
+                            cout << cmd->getStatusMessage();
+                            if(status==CMD_SUCCESS)
+                            {
+                                for(size_t i= 0; i<result.size(); i++)
+                                    fprintf(outFile, "%u\n", result[i]);
+                                fprintf(outFile, "\n");
+                            }
                         }
                         break;
                     }
@@ -852,17 +920,20 @@ class Cli
                         break;
                     }
                     case CliCommand::RT_OTHER:
-                        ((CliCommand_RTOther*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile);
+                        status= ((CliCommand_RTOther*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile);
                         break;
                     case CliCommand::RT_NONE:
-                        if(outFile!=stdout) printf("%s %s", FAIL_STR, _("output redirection not possible for this command.\n"));
-                        else ((CliCommand_RTVoid*)cmd)->execute(words, this, myGraph, hasDataSet, inFile);
-                        cout << cmd->getStatusMessage();
+                        if(outFile!=stdout)
+                            printf("%s %s", FAIL_STR, _("output redirection not possible for this command.\n")),
+                            status= CMD_FAILURE;
+                        else
+                            status= ((CliCommand_RTVoid*)cmd)->execute(words, this, myGraph, hasDataSet, inFile),
+                            cout << cmd->getStatusMessage();
                         break;
                 }
                 return status;
             }
-            printf("%s %s", FAIL_STR, _("no such command.\n"));
+            printf("%s %s\n", FAIL_STR, _("no such command."));
             return CMD_FAILURE;
         }
 
