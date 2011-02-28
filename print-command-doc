@@ -1,1 +1,20 @@
-sed -n 's|^[ \t]*//c:[ ]*||p' src/main.cpp
+#!/bin/bash
+
+# sed -n 's|^[ \t]*//c:[ ]*||p' src/main.cpp
+
+
+# (for i in $((echo help | ./graphcore | grep ^#) | (while read line; do echo $line | cut -d ' ' -f 2; done)); do echo help $i | ./graphcore ; done) | grep ^# | sed 's/^# //'
+
+COMMANDS=$((echo help | ./graphcore | grep ^#) | (while read line; do echo $line | cut -d ' ' -f 2; done))
+
+for i in $COMMANDS; do
+	echo '*'$i'*'
+done
+echo
+for i in $COMMANDS; do
+	echo $i:: ;
+	echo help $i | ./graphcore | grep ^# | sed 's/^# //'
+done
+
+
+
