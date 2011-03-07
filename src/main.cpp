@@ -634,8 +634,7 @@ class CliCommand
 
 
 // base classes for cli commands. derive commands from these.
-// YourCliCommand::execute() shall print the appropriate success/failure/error message
-// and return true on success, false otherwise.
+// YourCliCommand::execute() must return the appropriate CommandStatus error code.
 
 // cli commands which do not return a data set.
 class CliCommand_RTVoid: public CliCommand
