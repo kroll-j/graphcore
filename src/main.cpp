@@ -308,10 +308,11 @@ class Digraph
             result["ArcCount"]= statInfo(_("number of arcs"), arcsByHead.size());
             result["ArcRamKiB"]= statInfo(_("total RAM consumed by arc data, in KiB"), arcsByHead.size()*sizeof(arc)*2/1024);
             bool invalid= false;
-            int size= arcsByHead.size();
-            int numDups= 0;
+            uint32_t size= arcsByHead.size();
+            if(size!=arcsByTail.size()) invalid= true;
+            uint32_t numDups= 0;
             uint32_t minNodeID= U32MAX, maxNodeID= 0;
-#define AVGNEIGHBORS
+//#define AVGNEIGHBORS
 #ifdef AVGNEIGHBORS // calculate average successors/predecessors per node. this takes a little long.
             map<uint32_t,uint32_t> totalPredecessors;
             map<uint32_t,uint32_t> totalSuccessors;
