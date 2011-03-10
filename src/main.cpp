@@ -1144,7 +1144,7 @@ class ccStats: public CliCommand_RTOther
             cout << lastStatusMessage;
             for(map<string, Digraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
                 fprintf(outFile, "%s,%zu\n", i->first.c_str(), i->second.value);
-            fprintf(outfile, "\n");
+            fprintf(outFile, "\n");
             return CMD_SUCCESS;
         }
 };
