@@ -161,7 +161,7 @@ class Digraph
             NeighborIterator it(*this);
             it.startNeighbors(startNode);
             if(it.finished()) return 0;	// node does not exist
-            if(COMPARE()(*this, startNode, compArg)) return startNode;
+            if(COMPARE()(*this, startNode, compArg)) return startNode;  // empty path
             queue<uint32_t> Q;
             resultNodes.push_back(startNode);
             nodeInfo[startNode]= BFSnode(0, 0);
@@ -594,10 +594,12 @@ class Digraph
 #define SUCCESS_STR "OK."
 #define FAIL_STR "FAILED!"
 #define ERROR_STR "ERROR!"
+#define NONE_STR "NONE."
 #define cliMessage(str, x...) ({ char c[2048]; int n= sprintf(c, str " "); snprintf(c+n, sizeof(c)-n, x); lastStatusMessage= c; })
 #define cliSuccess(x...) cliMessage(SUCCESS_STR, x)
 #define cliFailure(x...) cliMessage(FAIL_STR, x)
 #define cliError(x...) cliMessage(ERROR_STR, x)
+#define cliNone(x...) cliMessage(NONE_STR, x)
 
 enum CommandStatus
 {
@@ -1004,7 +1006,7 @@ template<Digraph::NodeRelation searchType, bool recursive>
                      vector<uint32_t> &result)
         {
             if( (words.size()!=(recursive? 3: 2)) || hasDataSet ||
-                !Cli::isValidNodeID(words[1]) || (recursive && !Cli::isValidNodeID(words[2])) )
+                !Cli::isValidNodeID(words[1]) || (recursive && !Cli::isValidUint(words[2])) )
             {
                 syntaxError();
                 return CMD_FAILURE;
@@ -1021,8 +1023,16 @@ template<Digraph::NodeRelation searchType, bool recursive>
                          searchType);
             #endif
             if(!recursive && result.size()) result.erase(result.begin());
-            cliSuccess(_("%zu nodes, %fs%s\n"), result.size(), getTime()-d, outFile==stdout? ":": "");
-            return CMD_SUCCESS;
+            if(recursive && !result.size())
+            {
+                cliNone(_("Node not found.\n"));
+                return CMD_NONE;
+            }
+            else
+            {
+                cliSuccess(_("%zu nodes, %fs%s\n"), result.size(), getTime()-d, outFile==stdout? ":": "");
+                return CMD_SUCCESS;
+            }
         }
 };
 
