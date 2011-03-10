@@ -735,6 +735,7 @@ class Cli
                     add_history(completeCommand);
                 free(command);
                 free(completeCommand);
+                fflush(stdout);
             }
         }
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: graphcore\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-02-28 20:29+0100\n"
+"POT-Creation-Date: 2011-03-07 16:51+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -24,31 +24,31 @@ msgstr ""
 msgid "total RAM consumed by arc data, in KiB"
 msgstr ""
 
-#: src/main.cpp:339
+#: src/main.cpp:340
 msgid "average predecessors per node"
 msgstr ""
 
-#: src/main.cpp:344
+#: src/main.cpp:345
 msgid "average successors per node"
 msgstr ""
 
-#: src/main.cpp:347
+#: src/main.cpp:348
 msgid "lowest node ID"
 msgstr ""
 
-#: src/main.cpp:348
+#: src/main.cpp:349
 msgid "greatest node ID"
 msgstr ""
 
-#: src/main.cpp:349
+#: src/main.cpp:350
 msgid "number of duplicates found (must be zero)"
 msgstr ""
 
-#: src/main.cpp:350
+#: src/main.cpp:351
 msgid "nonzero if any obvious errors were found in graph data"
 msgstr ""
 
-#: src/main.cpp:626
+#: src/main.cpp:627
 msgid " Syntax: "
 msgstr ""
 
