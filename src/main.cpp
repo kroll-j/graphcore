@@ -149,6 +149,9 @@ class Digraph
                 niveau(_niveau), pathNext(_pathNext) { }
         };
 
+        // breadth-first search
+        // walk search tree until COMPARE()(node, compArg) returns true
+        // returns the node that matched, or 0
         template<typename COMPARE>
             uint32_t doBFS2(uint32_t startNode, uint32_t compArg, uint32_t depth,
                             vector<uint32_t> &resultNodes,
@@ -158,6 +161,7 @@ class Digraph
             NeighborIterator it(*this);
             it.startNeighbors(startNode);
             if(it.finished()) return 0;	// node does not exist
+            if(COMPARE()(*this, startNode, compArg)) return startNode;
             queue<uint32_t> Q;
             resultNodes.push_back(startNode);
             nodeInfo[startNode]= BFSnode(0, 0);
