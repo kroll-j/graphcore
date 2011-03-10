@@ -701,6 +701,7 @@ class Cli
             bool commandHasDataSet;
             while(!doQuit)
             {
+                fflush(stdout);
                 if(inRedir) fclose(inRedir), inRedir= 0;
                 if(outRedir) fclose(outRedir), outRedir= 0;
                 if( (command= getLine())==0 ) return;
@@ -735,7 +736,6 @@ class Cli
                     add_history(completeCommand);
                 free(command);
                 free(completeCommand);
-                fflush(stdout);
             }
         }
 
