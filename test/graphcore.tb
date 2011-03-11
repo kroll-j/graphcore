@@ -1,0 +1,454 @@
+# script to be used with talkback.py for testing graphcore
+
+# build small graph #################################################
+> add-arcs:
+> 1,11
+> 1,12
+> 1,13
+> 2,21
+> 21,12
+> 13,21
+> 21,211
+> 
+>
+= OK.
+
+# check stats
+> stats
+~ ^OK\..*:$
+*
+= ArcCount,7
+*
+=
+
+# check successors #################################################
+> list-successors-nonrecursive 1
+~ ^OK\..*:$
+= 11
+= 12
+= 13
+= 
+
+> list-successors 1 1
+~ ^OK\..*:$
+= 1
+= 11
+= 12
+= 13
+= 
+
+> list-successors 1 2
+~ ^OK\..*:$
+= 1
+= 11
+= 12
+= 13
+= 21
+= 
+
+> list-successors 1 3
+~ ^OK\..*:$
+= 1
+= 11
+= 12
+= 13
+= 21
+= 211
+= 
+
+# check predecessors #################################################
+> list-predecessors 1 5
+~ ^OK\..*:$
+= 1
+=
+
+> list-predecessors-nonrecursive 1
+~ ^OK\..*:$
+= 
+
+> list-predecessors 211 0
+~ ^OK\..*:$
+= 211
+= 
+
+> list-predecessors 666 1
+~ ^NONE\.
+
+> list-predecessors 1 0
+~ ^OK\..*:$
+= 1
+= 
+
+> list-predecessors 211 1
+~ ^OK\..*:$
+= 211
+= 21
+= 
+
+> list-predecessors 211 2
+~ ^OK\..*:$
+= 211
+= 21
+= 2
+= 13
+=
+
+# test pathes #################################################
+> find-path 211 2
+~ ^NONE\.
+
+> find-path 1 2
+~ ^NONE\.
+
+> find-path 11 11
+~ ^OK\..*:$
+= 
+
+> find-path 1 211
+~ ^OK\..*:$
+= 1,13
+= 13,21
+= 21,211
+= 
+
+> find-path 2 211
+~ ^OK\..*:$
+= 2,21
+= 21,211
+=
+
+# test find-root #################################################
+> find-root 1
+~ ^OK\..*:$
+= 
+
+> find-root 11
+~ ^OK\..*:$
+= 1,11
+= 
+
+> find-root 211
+~ ^OK\..*:$
+= 2,21
+= 21,211
+= 
+
+# test list-roots #################################################
+> list-roots
+~ ^OK\..*:$
+= 1
+= 2
+= 
+
+# FIXME!
+# doesn't find 211 !
+; > list-leaves
+; ~ ^OK\..*:$
+; = 11
+; = 12
+; = 211
+; = 
+
+# test set operations #################################################
+> list-roots && list-predecessors 211 5
+~ ^OK\..*:$
+= 1
+= 2
+= 
+
+> list-roots && list-predecessors 13 5
+~ ^OK\..*:$
+= 1
+= 
+
+> list-successors 21 5 && list-successors 2 5
+~ ^OK\..*:$
+= 12
+= 21
+= 211
+= 
+
+> list-successors 1 5 &&! list-successors 2 5
+~ ^OK\..*:$
+= 1
+= 11
+= 13
+= 
+
+#FIXME
+# returns NONE, should return empty set
+; > list-successors 13 5 &&! list-successors 1 5
+; ~ ^OK\..*:$
+; = 
+
+#FIXME 
+# list-leaves misses 221 (see above)
+; > list-successors 21 5 &&! list-leaves
+; ~ ^OK\..*:$
+; = 21
+; =
+
+# test operations with NONE ###########################################
+# FIXME!
+# returns NONE, should return empty set
+; > list-roots && list-leaves
+; ~ ^OK\..*:$
+; = 
+
+# FIXME!
+# && should return NONE *only* of one of the operants return NONE.
+# &&! should return NONE if the left operant is NONE. NONE on the right side is treated like an empty set.
+# (this crap needs to be documented somewhere..)
+; > list-roots && list-successors-nonrecursive 666
+; ~ ^NONE\..*$
+; 
+; > list-successors-nonrecursive 666 && list-roots
+; ~ ^NONE\..*$
+; 
+; > list-roots &&! list-predecessors-nonrecursive 666
+; ~ ^OK\..*:$
+; = 1
+; = 2
+; =
+; 
+; > list-successors-nonrecursive 666 &&! list-roots
+; ~ ^NONE\..*$
+; 
+; > list-roots &&! list-predecessors-nonrecursive 666
+
+# insert dupes #################################################
+> add-arcs:
+> 1,11
+> 2,21
+> 
+~ ^OK\.(.*[^:])?$
+
+> stats
+~ ^OK\..*:$
+*
+= ArcCount,7
+*
+=
+
+> list-successors-nonrecursive 1
+~ ^OK\..*:$
+= 11
+= 12
+= 13
+=
+
+# test remove arcs #################################################
+> remove-arcs:
+> 666,777
+> 21,12
+>
+~ ^OK\.(.*[^:])?$
+
+> stats
+~ ^OK\..*:$
+*
+= ArcCount,6
+*
+=
+
+> list-successors-nonrecursive 21
+~ ^OK\..*:$
+= 211
+=
+
+# test bad data #################################################
+> add-arcs:
+> 1,2,3
+~ ^ERROR!.*$
+
+#FIXME
+# gets read as an empty line, should cause ERROR
+; > add-arcs:
+; > ,
+; ~ ^ERROR!.*$
+
+> add-arcs:
+> 1,
+~ ^ERROR!.*$
+
+> add-arcs:
+> ,1
+~ ^ERROR!.*$
+
+> add-arcs:
+> -1,-2
+~ ^ERROR!.*$
+
+> add-arcs:
+> a,b
+~ ^ERROR!.*$
+
+> add-arcs:
+> 1,0
+~ ^ERROR!.*$
+
+# FIXME:
+# slurp dataset before erroring out!
+; > add-arcs:
+; > 1,11
+; > a,b
+; > 1,12
+; >
+; ~ ^ERROR!.*$
+; 
+; #check if remaining lines got slurped:
+; > stats
+; ~ ^OK\..*:$
+; *
+; =
+;
+
+# test clear #################################################
+> clear 
+~ ^OK\.(.*[^:])?$
+
+> stats
+~ ^OK\..*:$
+*
+= ArcCount,0
+*
+=
+
+> list-roots
+~ ^OK\..*:$
+= 
+
+# test circles #################################################
+> add-arcs:
+> 1,2
+> 2,3
+> 3,1
+> 4,4
+> 4,1
+> 
+~ ^OK\.(.*[^:])?$
+
+> list-roots
+~ ^OK\..*:$
+= 
+
+> find-root 2
+~ ^NONE\.(.*[^:])?$
+
+> find-root 4
+~ ^NONE\.(.*[^:])?$
+
+> find-path 2 1
+~ ^OK\..*:$
+= 2,3
+= 3,1
+=
+
+> find-path 2 4
+~ ^NONE\.(.*[^:])?$
+
+> list-successors 3 1
+~ ^OK\..*:$
+= 3
+= 1
+=
+
+> list-successors 2 6
+~ ^OK\..*:$
+= 2
+= 3
+= 1
+= 
+
+> list-successors 4 6
+~ ^OK\..*:$
+= 4
+= 1
+= 2
+= 3
+= 
+
+> list-predecessors 4 6
+~ ^OK\..*:$
+= 4
+= 
+
+# test replace #################################################
+> replace-successors 4:
+> 
+~ ^OK\.(.*[^:])?$
+
+> list-successors 4 2
+~ ^NONE\.(.*[^:])?$
+
+> list-predecessors-nonrecursive 1 
+~ ^OK\..*:$
+= 3
+= 
+
+> replace-predecessors 4:
+> 2
+> 3
+> 
+~ ^OK\.(.*[^:])?$
+
+> list-predecessors 4 1
+~ ^OK\..*:$
+= 4
+= 2
+= 3
+=
+
+> list-successors 2 1
+~ ^OK\..*:$
+= 2
+= 3
+= 4
+= 
+
+# invalid commands #################################################
+> bla bla
+~ ^FAILED!(.*[^:])?$
+
+> list-successors
+~ ^FAILED!(.*[^:])?$
+
+> list-successors 1
+~ ^FAILED!(.*[^:])?$
+
+> list-successors 1 1 1
+~ ^FAILED!(.*[^:])?$
+
+> list-successors -1 -1
+~ ^FAILED!(.*[^:])?$
+
+> list-successors 1.2 2.3
+~ ^FAILED!(.*[^:])?$
+
+> list-successors x y
+~ ^FAILED!(.*[^:])?$
+
+# FIXME:
+# slurp dataset before erroring out!
+; > foo:
+; > 1,11
+; > 1,12
+; >
+; ~ ^ERROR!.*$
+; 
+; #check if remaining lines got slurped:
+; > stats
+; ~ ^OK\..*:$
+; *
+; =
+;
+
+# quit #################################################
+> shutdown
+~ ^OK\.(.*[^:])?$
+
+# close output
+.
+
+# check return code
+? 0
