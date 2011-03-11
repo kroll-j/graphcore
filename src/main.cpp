@@ -1213,14 +1213,14 @@ class ccAddArcs: public CliCommand_RTVoid
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// ccEraseArcs
-// erase-arcs command
-class ccEraseArcs: public CliCommand_RTVoid
+// ccRemoveArcs
+// remove-arcs command
+class ccRemoveArcs: public CliCommand_RTVoid
 {
     public:
-        string getName()            { return "erase-arcs"; }
+        string getName()            { return "remove-arcs"; }
         string getSynopsis()        { return getName() + " {:|<}"; }
-        string getHelpText()        { return _("read a data set of arcs and erase them from the graph. empty line terminates the set."); }
+        string getHelpText()        { return _("read a data set of arcs and remove them from the graph. empty line terminates the set."); }
 
         CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
@@ -1435,7 +1435,7 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
 {
     commands.push_back(new ccHelp(this));
     commands.push_back(new ccAddArcs());
-    commands.push_back(new ccEraseArcs());
+    commands.push_back(new ccRemoveArcs());
     commands.push_back(new ccReplaceNeighbors<Digraph::PREDECESSORS>("replace-predecessors"));
     commands.push_back(new ccReplaceNeighbors<Digraph::DESCENDANTS>("replace-successors"));
     commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, true>("list-predecessors"));
