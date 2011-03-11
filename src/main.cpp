@@ -1443,7 +1443,7 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
     commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, true>("list-neighbors"));
     commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, false>("list-predecessors-nonrecursive"));
     commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, false>("list-successors-nonrecursive"));
-    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, false>("list-neighbors-nonrecursive"));
+//    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, false>("list-neighbors-nonrecursive"));
     commands.push_back(new ccFindPath<false>("find-path"));
     commands.push_back(new ccFindPath<true>("find-root"));
     commands.push_back(new ccListNeighborless<false>("list-roots"));
