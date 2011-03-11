@@ -1417,10 +1417,10 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                     *it++= Digraph::arc(node, next);
                     node= next;
                 }
-                cliSuccess(_("%zu nodes visited, path length %zu\n"), nodes.size(), result.size());
+                cliSuccess(_("%zu nodes visited, path length %zu%s\n"), nodes.size(), result.size(),
+                           outFile==stdout? ":": "");
                 return CMD_SUCCESS;
             }
-//            printf("NONE.\n");
             lastStatusMessage= "NONE.\n";
             return CMD_NONE;
         }
