@@ -1055,7 +1055,7 @@ template<bool leaves>
         string getHelpText()
         {
             if(leaves)
-                return _("list leaf nodes (nodes without descendants).");
+                return _("list leaf nodes (nodes without successors).");
             else
                 return _("list root nodes (nodes without predecessors).");
         }

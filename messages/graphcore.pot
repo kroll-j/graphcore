@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: graphcore\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-03-07 16:51+0100\n"
+"POT-Creation-Date: 2011-03-14 16:46+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,218 +16,222 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/main.cpp:308
+#: src/main.cpp:312
 msgid "number of arcs"
 msgstr ""
 
-#: src/main.cpp:309
+#: src/main.cpp:313
 msgid "total RAM consumed by arc data, in KiB"
 msgstr ""
 
-#: src/main.cpp:340
+#: src/main.cpp:344
 msgid "average predecessors per node"
 msgstr ""
 
-#: src/main.cpp:345
+#: src/main.cpp:349
 msgid "average successors per node"
 msgstr ""
 
-#: src/main.cpp:348
+#: src/main.cpp:352
 msgid "lowest node ID"
 msgstr ""
 
-#: src/main.cpp:349
+#: src/main.cpp:353
 msgid "greatest node ID"
 msgstr ""
 
-#: src/main.cpp:350
+#: src/main.cpp:354
 msgid "number of duplicates found (must be zero)"
 msgstr ""
 
-#: src/main.cpp:351
+#: src/main.cpp:355
 msgid "nonzero if any obvious errors were found in graph data"
 msgstr ""
 
-#: src/main.cpp:627
+#: src/main.cpp:633
 msgid " Syntax: "
 msgstr ""
 
-#: src/main.cpp:714
+#: src/main.cpp:721
 msgid "couldn't open output file\n"
 msgstr ""
 
-#: src/main.cpp:724
+#: src/main.cpp:731
 msgid "couldn't open input file\n"
 msgstr ""
 
-#: src/main.cpp:839
+#: src/main.cpp:846
 msgid "operators not available for this return type."
 msgstr ""
 
-#: src/main.cpp:855
+#: src/main.cpp:862
 msgid "no such command"
 msgstr ""
 
-#: src/main.cpp:857
+#: src/main.cpp:864
 msgid "return type mismatch"
 msgstr ""
 
-#: src/main.cpp:927
+#: src/main.cpp:934
 msgid "output redirection not possible for this command.\n"
 msgstr ""
 
-#: src/main.cpp:936
+#: src/main.cpp:943
 msgid "no such command."
 msgstr ""
 
-#: src/main.cpp:981 src/main.cpp:1255
+#: src/main.cpp:988 src/main.cpp:1271
 msgid " NODE"
 msgstr ""
 
-#: src/main.cpp:981
+#: src/main.cpp:988
 msgid " DEPTH"
 msgstr ""
 
-#: src/main.cpp:986
+#: src/main.cpp:993
 msgid "list NODE and its neighbors recursively up to DEPTH."
 msgstr ""
 
-#: src/main.cpp:987
+#: src/main.cpp:994
 msgid "list NODE and its predecessors recursively up to DEPTH."
 msgstr ""
 
-#: src/main.cpp:988
+#: src/main.cpp:995
 msgid "list NODE and its successors recursively up to DEPTH."
 msgstr ""
 
-#: src/main.cpp:992
+#: src/main.cpp:999
 msgid "list direct neighbors of NODE."
 msgstr ""
 
-#: src/main.cpp:993
+#: src/main.cpp:1000
 msgid "list direct predecessors of NODE."
 msgstr ""
 
-#: src/main.cpp:994
+#: src/main.cpp:1001
 msgid "list direct successors of NODE."
 msgstr ""
 
-#: src/main.cpp:1019
+#: src/main.cpp:1028
+msgid "Node not found.\n"
+msgstr ""
+
+#: src/main.cpp:1033
 #, c-format
 msgid "%zu nodes, %fs%s\n"
 msgstr ""
 
-#: src/main.cpp:1043
-msgid "list leaf nodes (nodes without descendants)."
+#: src/main.cpp:1058
+msgid "list leaf nodes (nodes without successors)."
 msgstr ""
 
-#: src/main.cpp:1045
+#: src/main.cpp:1060
 msgid "list root nodes (nodes without predecessors)."
 msgstr ""
 
-#: src/main.cpp:1058
+#: src/main.cpp:1073
 #, c-format
 msgid "%zu %s%s\n"
 msgstr ""
 
-#: src/main.cpp:1058
+#: src/main.cpp:1073
 msgid "leaf nodes"
 msgstr ""
 
-#: src/main.cpp:1058
+#: src/main.cpp:1073
 msgid "root nodes"
 msgstr ""
 
-#: src/main.cpp:1078
+#: src/main.cpp:1093
 msgid " [COMMAND]"
 msgstr ""
 
-#: src/main.cpp:1079
+#: src/main.cpp:1094
 msgid "get help on COMMAND/list commands."
 msgstr ""
 
-#: src/main.cpp:1093
+#: src/main.cpp:1108
 #, c-format
 msgid "%s: no such command.\n"
 msgstr ""
 
-#: src/main.cpp:1101
+#: src/main.cpp:1116
 #, c-format
 msgid "available commands%s\n"
 msgstr ""
 
-#: src/main.cpp:1123
+#: src/main.cpp:1138
 msgid ""
 "print some statistics about the graph in the form of a name,value data set.\n"
 msgstr ""
 
-#: src/main.cpp:1124
+#: src/main.cpp:1139
 msgid "names and their meanings:"
 msgstr ""
 
-#: src/main.cpp:1159
+#: src/main.cpp:1175
 msgid ""
 "read a data set of arcs and add them to the graph. empty line terminates the "
 "set."
 msgstr ""
 
-#: src/main.cpp:1174 src/main.cpp:1221 src/main.cpp:1279
+#: src/main.cpp:1190 src/main.cpp:1237 src/main.cpp:1295
 msgid "couldn't read data set\n"
 msgstr ""
 
-#: src/main.cpp:1185
+#: src/main.cpp:1201
 #, c-format
 msgid "invalid data record in line %u\n"
 msgstr ""
 
-#: src/main.cpp:1190 src/main.cpp:1231 src/main.cpp:1285
+#: src/main.cpp:1206 src/main.cpp:1247 src/main.cpp:1301
 msgid "invalid data record\n"
 msgstr ""
 
-#: src/main.cpp:1207
+#: src/main.cpp:1223
 msgid ""
-"read a data set of arcs and erase them from the graph. empty line terminates "
-"the set."
+"read a data set of arcs and remove them from the graph. empty line "
+"terminates the set."
 msgstr ""
 
-#: src/main.cpp:1260
+#: src/main.cpp:1276
 msgid "read data set of nodes and replace predecessors of NODE with given set."
 msgstr ""
 
-#: src/main.cpp:1261
+#: src/main.cpp:1277
 msgid "read data set of nodes and replace successors of NODE with given set."
 msgstr ""
 
-#: src/main.cpp:1298
+#: src/main.cpp:1314
 msgid "internal error: Digraph::replaceNeighbors() failed.\n"
 msgstr ""
 
-#: src/main.cpp:1313
+#: src/main.cpp:1329
 msgid "clear the graph model."
 msgstr ""
 
-#: src/main.cpp:1337
+#: src/main.cpp:1353
 msgid "shutdown the graph processor."
 msgstr ""
 
-#: src/main.cpp:1346
+#: src/main.cpp:1362
 #, c-format
 msgid "shutting down pid %d.\n"
 msgstr ""
 
-#: src/main.cpp:1370
+#: src/main.cpp:1386
 msgid ""
 "find the path from X to nearest root node. return data set of arcs "
 "representing the path."
 msgstr ""
 
-#: src/main.cpp:1372
+#: src/main.cpp:1388
 msgid ""
 "find the shortest path from node X to node Y. return data set of arcs "
 "representing the path."
 msgstr ""
 
-#: src/main.cpp:1404
+#: src/main.cpp:1420
 #, c-format
-msgid "%zu nodes visited, path length %zu\n"
+msgid "%zu nodes visited, path length %zu%s\n"
 msgstr ""

@@ -1,7 +1,7 @@
 CCFLAGS=-Wall
 LDFLAGS=-lpthread -lreadline
 
-all: 		Release Debug updatelang
+all: 		Release Debug
 
 Release:	graphcore
 Debug:		graphcore.dbg
@@ -12,5 +12,7 @@ graphcore:	src/main.cpp
 graphcore.dbg:	src/main.cpp
 		g++ $(CCFLAGS) -ggdb src/main.cpp $(LDFLAGS) -ographcore.dbg
 
+# updatelang: update the language files
+# running this will generate changes in the repository
 updatelang:	#
 		./update-lang.sh
