@@ -191,26 +191,35 @@
 # test operations with NONE ###########################################
 # FIXME!
 # returns NONE, should return empty set
-; > list-roots && list-leaves
-; ~ ^OK\..*:$
-; = 
+> list-roots && list-leaves
+~ ^OK\..*:$
+= 
 
 # FIXME!
 # && should return NONE *only* of one of the operants return NONE.
 # &&! should return NONE if the left operant is NONE. NONE on the right side is treated like an empty set.
 # (this crap needs to be documented somewhere..)
+
+# J: list-*-nonrecursive never returns NONE, so these tests don't work as expected:
 ; > list-roots && list-successors-nonrecursive 666
 ; ~ ^NONE\..*$
 ; 
 ; > list-successors-nonrecursive 666 && list-roots
 ; ~ ^NONE\..*$
-; 
-; > list-roots &&! list-predecessors-nonrecursive 666
-; ~ ^OK\..*:$
-; = 1
-; = 2
-; =
-; 
+
+# J: these work:
+> list-roots && list-successors 666 1
+~ ^NONE\..*$
+
+> list-successors 666 1 && list-roots
+~ ^NONE\..*$
+
+> list-roots &&! list-predecessors-nonrecursive 666
+~ ^OK\..*:$
+= 1
+= 2
+=
+
 ; > list-successors-nonrecursive 666 &&! list-roots
 ; ~ ^NONE\..*$
 ; 

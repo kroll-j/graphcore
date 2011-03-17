@@ -891,7 +891,10 @@ class Cli
                                                             result2.begin(), result2.end(),
                                                             mergeResult.begin());
                                     }
-                                    if(status==CMD_NONE||status2==CMD_NONE)
+//                                  # && should return NONE *only* of one of the operants return NONE.
+//                                  # &&! should return NONE if the left operant is NONE. NONE on the right side is treated like an empty set.
+                                    if( (opstring=="&&" && (status==CMD_NONE||status2==CMD_NONE)) ||
+                                        (opstring=="&&!" && (status==CMD_NONE)) )
                                         cout << "NONE." << endl;
                                     else
                                     {
