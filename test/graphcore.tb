@@ -259,6 +259,7 @@
 # test bad data #################################################
 > add-arcs:
 > 1,2,3
+>
 ~ ^ERROR!.*$
 
 #FIXME
@@ -269,39 +270,44 @@
 
 > add-arcs:
 > 1,
+>
 ~ ^ERROR!.*$
 
 > add-arcs:
 > ,1
+>
 ~ ^ERROR!.*$
 
 > add-arcs:
 > -1,-2
+>
 ~ ^ERROR!.*$
 
 > add-arcs:
 > a,b
+>
 ~ ^ERROR!.*$
 
 > add-arcs:
 > 1,0
+>
 ~ ^ERROR!.*$
 
-# FIXME:
+# FIXME: (done)
 # slurp dataset before erroring out!
-; > add-arcs:
-; > 1,11
-; > a,b
-; > 1,12
-; >
-; ~ ^ERROR!.*$
-; 
-; #check if remaining lines got slurped:
-; > stats
-; ~ ^OK\..*:$
-; *
-; =
-;
+> add-arcs:
+> 1,11
+> a,b
+> 1,12
+>
+~ ^ERROR!.*$
+ 
+#check if remaining lines got slurped:
+> stats
+~ ^OK\..*:$
+*
+=
+
 
 # test clear #################################################
 > clear 
@@ -428,20 +434,20 @@
 > list-successors x y
 ~ ^FAILED!(.*[^:])?$
 
-# FIXME:
+# FIXME: (done)
 # slurp dataset before erroring out!
-; > foo:
-; > 1,11
-; > 1,12
-; >
-; ~ ^ERROR!.*$
-; 
-; #check if remaining lines got slurped:
-; > stats
-; ~ ^OK\..*:$
-; *
-; =
-;
+> foo:
+> 1,11
+> 1,12
+>
+~ ^FAILED!.*$
+ 
+#check if remaining lines got slurped:
+> stats
+~ ^OK\..*:$
+*
+=
+
 
 # quit #################################################
 > shutdown

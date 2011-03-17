@@ -634,6 +634,11 @@ class CliCommand
         const string &getStatusMessage()    { return lastStatusMessage; }
         virtual ReturnType getReturnType()= 0;
 
+        // read a data set of node IDs.
+        // expectedSize: expected size of set per line (e. g. 1 for nodes, 2 for arcs)
+        // update lastErrorString and return true on success, false on failure.
+        bool readNodeset(FILE *inFile, vector< vector<uint32_t> > &dataset, unsigned expectedSize);
+
     protected:
         string lastStatusMessage;
 };
@@ -940,6 +945,11 @@ class Cli
                 }
                 return status;
             }
+            if(hasDataSet)
+            {   // command not found, slurp data set anyway as per spec.
+                vector< vector<uint32_t> > dummyvec;
+                commands[0]->readNodeset(inFile, dummyvec, 0);
+            }
             printf("%s %s\n", FAIL_STR, _("no such command."));
             return CMD_FAILURE;
         }
@@ -969,6 +979,40 @@ class Cli
             }
         }
 };
+
+
+// read a data set of node IDs.
+// expectedSize: expected size of set per line (e. g. 1 for nodes, 2 for arcs)
+// update lastErrorString and return true on success, false on failure.
+bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &dataset, unsigned expectedSize)
+{
+    vector<uint32_t> record;
+    bool ok= true;
+    cliSuccess("\n");
+    for(unsigned lineno= 1; ; lineno++)
+    {
+        record.clear();
+        if( !Cli::readNodeIDRecord(inFile, record) )
+        {
+            cliError(_("error reading data set (line %u)\n"), lineno);
+            ok= false;
+        }
+        else if(record.size()==0)
+        {
+            return ok;
+        }
+        else if(record.size()!=expectedSize)
+        {
+            cliError(_("error reading data set (line %u)\n"), lineno);
+            ok= false;
+        }
+        else
+        {
+            if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
+            if(ok) dataset.push_back(record);
+        }
+    }
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1182,6 +1226,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 return CMD_FAILURE;
             }
             uint32_t oldSize= graph->size();
+/*
             vector<uint32_t> record;
             for(unsigned lineno= 1; ; lineno++)
             {
@@ -1199,7 +1244,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 else if(record.size()!=2)
                 {
                     cliError(_("invalid data record in line %u\n"), lineno);
-                    return CMD_SUCCESS;
+                    return CMD_ERROR;
                 }
                 else
                 {
@@ -1208,6 +1253,16 @@ class ccAddArcs: public CliCommand_RTVoid
                     record.clear();
                 }
             }
+*/
+            vector< vector<uint32_t> > dataset;
+            if(!readNodeset(inFile, dataset, 2))
+                return CMD_FAILURE;
+
+            for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+                graph->addArc((*i)[0], (*i)[1], false);
+            graph->resort(oldSize);
+
+            return CMD_SUCCESS;
         }
 };
 
