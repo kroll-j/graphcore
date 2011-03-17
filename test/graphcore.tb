@@ -177,9 +177,9 @@
 
 #FIXME
 # returns NONE, should return empty set
-; > list-successors 13 5 &&! list-successors 1 5
-; ~ ^OK\..*:$
-; = 
+> list-successors 13 5 &&! list-successors 1 5
+~ ^OK\..*:$
+= 
 
 #FIXME 
 # list-leaves misses 221 (see above)
