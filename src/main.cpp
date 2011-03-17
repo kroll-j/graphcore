@@ -860,6 +860,7 @@ class Cli
                         status= ((CliCommand_RTNodeList*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile, result);
                         if(!opstring.empty())
                         {
+                            // operator handling
                             if(status==CMD_SUCCESS||status==CMD_NONE)
                             {
                                 CliCommand *cmd2= findCommand(words2[0]);
