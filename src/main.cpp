@@ -891,7 +891,9 @@ class Cli
                                                             result2.begin(), result2.end(),
                                                             mergeResult.begin());
                                     }
-                                    if(end!=mergeResult.begin())
+                                    if(status==CMD_NONE||status2==CMD_NONE)
+                                        cout << "NONE." << endl;
+                                    else
                                     {
                                         cout << SUCCESS_STR <<
                                             " L: " << result.size() << " R: " << result2.size() << " -> " << end-mergeResult.begin() <<
@@ -900,8 +902,6 @@ class Cli
                                             fprintf(outFile, "%u\n", *it);
                                         fprintf(outFile, "\n");
                                     }
-                                    else
-                                        cout << "NONE." << endl;
                                 }
                                 else { cout << cmd2->getStatusMessage(); break; }
                             }
