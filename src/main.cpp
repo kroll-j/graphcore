@@ -321,7 +321,7 @@ class Digraph
             map<uint32_t,uint32_t> totalPredecessors;
             map<uint32_t,uint32_t> totalSuccessors;
 #endif
-            for(int i= 0; i<size; i++)
+            for(uint32_t i= 0; i<size; i++)
             {
                 arc &h= arcsByHead[i];
                 if(i<size-1 && h==arcsByHead[i+1])
@@ -761,8 +761,10 @@ class Cli
         // check if string forms a valid unsigned integer
         static bool isValidUint(const string& s)
         {
+            // disallow empty strings
+            if(s.length()<1) return false;
             // allow only positive decimal digits
-            for(int i= 0; s[i]; i++)
+            for(size_t i= 0; i<s.length(); i++)
                 if( !isdigit(s[i]) ) return false;
             return true;
         }
@@ -785,6 +787,9 @@ class Cli
             }
             if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;
             vector<string> strings= splitString(line);
+            if(strlen(line) && !strings.size())
+                // a non-empty string with no words (i. e. entirely made up of delimiters) is illegal
+                return false;
             for(uint32_t i= 0; i<strings.size(); i++)
             {
                 if(!isValidUint(strings[i])) return false;
@@ -891,8 +896,8 @@ class Cli
                                                             result2.begin(), result2.end(),
                                                             mergeResult.begin());
                                     }
-//                                  # && should return NONE *only* of one of the operants return NONE.
-//                                  # &&! should return NONE if the left operant is NONE. NONE on the right side is treated like an empty set.
+// && should return NONE *only* if one of the operants return NONE.
+// &&! should return NONE if the left operant is NONE. NONE on the right side is treated like an empty set.
                                     if( (opstring=="&&" && (status==CMD_NONE||status2==CMD_NONE)) ||
                                         (opstring=="&&!" && (status==CMD_NONE)) )
                                         cout << "NONE." << endl;
@@ -969,17 +974,18 @@ class Cli
         }
 
         // split a string into words using given delimiters
-        static vector<string> splitString(char *str, const char *delim= " \n\t,")
+        static vector<string> splitString(const char *s, const char *delim= " \n\t,")
         {
             vector<string> ret;
+            const char *str= s;
             while(true)
             {
                 while(*str && strchr(delim, *str)) str++;
                 if(!*str) return ret;
-                char *start= str;
+                const char *start= str;
                 while(*str && !strchr(delim, *str)) str++;
-                if(*str) *str++= 0;
-                ret.push_back(string(start));
+                ret.push_back(string(start, str-start));
+                if(*str) str++;
             }
         }
 };
@@ -998,7 +1004,7 @@ bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &dataset, 
         record.clear();
         if( !Cli::readNodeIDRecord(inFile, record) )
         {
-            cliError(_("error reading data set (line %u)\n"), lineno);
+            if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
             ok= false;
         }
         else if(record.size()==0)
@@ -1007,7 +1013,7 @@ bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &dataset, 
         }
         else if(record.size()!=expectedSize)
         {
-            cliError(_("error reading data set (line %u)\n"), lineno);
+            if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
             ok= false;
         }
         else

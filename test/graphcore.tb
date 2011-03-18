@@ -175,7 +175,7 @@
 = 13
 = 
 
-#FIXME
+#(fixed)
 # returns NONE, should return empty set
 > list-successors 13 5 &&! list-successors 1 5
 ~ ^OK\..*:$
@@ -189,13 +189,13 @@
 ; =
 
 # test operations with NONE ###########################################
-# FIXME!
+# (fixed)
 # returns NONE, should return empty set
 > list-roots && list-leaves
 ~ ^OK\..*:$
 = 
 
-# FIXME!
+# (fixed)
 # && should return NONE *only* of one of the operants return NONE.
 # &&! should return NONE if the left operant is NONE. NONE on the right side is treated like an empty set.
 # (this crap needs to be documented somewhere..)
@@ -220,9 +220,9 @@
 = 2
 =
 
-; > list-successors-nonrecursive 666 &&! list-roots
-; ~ ^NONE\..*$
-; 
+> list-successors 666 1 &&! list-roots
+~ ^NONE\..*$
+
 ; > list-roots &&! list-predecessors-nonrecursive 666
 
 # insert dupes #################################################
@@ -271,11 +271,12 @@
 >
 ~ ^ERROR!.*$
 
-#FIXME
+#(fixed)
 # gets read as an empty line, should cause ERROR
-; > add-arcs:
-; > ,
-; ~ ^ERROR!.*$
+> add-arcs:
+> ,
+>
+~ ^ERROR!.*$
 
 > add-arcs:
 > 1,

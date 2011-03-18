@@ -16,3 +16,6 @@ graphcore.dbg:	src/main.cpp
 # running this will generate changes in the repository
 updatelang:	#
 		./update-lang.sh
+
+test:		Release Debug
+		python test/talkback.py test/graphcore.tb ./graphcore
