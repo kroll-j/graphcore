@@ -140,8 +140,7 @@
 = 2
 = 
 
-# FIXME!
-# doesn't find 211 !
+# (fixed)
 > list-leaves
 ~ ^OK\..*:$
 = 11
@@ -181,12 +180,11 @@
 ~ ^OK\..*:$
 = 
 
-#FIXME 
-# list-leaves misses 221 (see above)
-; > list-successors 21 5 &&! list-leaves
-; ~ ^OK\..*:$
-; = 21
-; =
+#(fixed)
+> list-successors 21 5 &&! list-leaves
+~ ^OK\..*:$
+= 21
+=
 
 # test operations with NONE ###########################################
 # (fixed)
@@ -303,7 +301,7 @@
 >
 ~ ^ERROR!.*$
 
-# FIXME: (done)
+# (fixed)
 # slurp dataset before erroring out!
 > add-arcs:
 > 1,11
@@ -444,7 +442,7 @@
 > list-successors x y
 ~ ^FAILED!(.*[^:])?$
 
-# FIXME: (done)
+# (fixed)
 # slurp dataset before erroring out!
 > foo:
 > 1,11
