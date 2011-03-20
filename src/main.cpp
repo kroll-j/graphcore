@@ -189,18 +189,18 @@ class Digraph
             return 0;
         }
 
-        // is this a node with no predecessors?
-        bool isRoot(uint32_t node)
+        // does this node have any predecessors?
+        bool hasPredecessor(uint32_t node)
         {
             arcContainer::iterator it= findArcByHead(node);
-            return !(it==arcsByHead.end() || it->head==node);
+            return (it!=arcsByHead.end() && it->head==node);
         }
 
-        // is this a node with no descendant?
-        bool isLeaf(uint32_t node)
+        // does this node have any descendants?
+        bool hasDescendant(uint32_t node)
         {
             arcContainer::iterator it= findArcByTail(node);
-            return !(it==arcsByTail.end() || it->tail==node);
+            return (it!=arcsByTail.end() && it->tail==node);
         }
 
         // comparison operators for search function
@@ -212,7 +212,7 @@ class Digraph
         struct findRoot
         {
             bool operator() (Digraph &graph, uint32_t node, uint32_t compArg)
-            { return graph.isRoot(node); }
+            { return !graph.hasPredecessor(node); }
         };
         struct findAll
         {
@@ -228,7 +228,7 @@ class Digraph
             while(it!=arcsByTail.end())
             {
                 uint32_t node= it->tail;
-                if(isRoot(node)) result.push_back(node);
+                if(!hasPredecessor(node)) result.push_back(node);
                 while(it->tail==node && it!=arcsByTail.end()) it++;
             }
         }
@@ -239,7 +239,7 @@ class Digraph
             while(it!=arcsByHead.end())
             {
                 uint32_t node= it->head;
-                if(isLeaf(node)) result.push_back(node);
+                if(!hasDescendant(node)) result.push_back(node);
                 while(it->head==node && it!=arcsByHead.end()) it++;
             }
         }
@@ -401,17 +401,17 @@ class Digraph
         }
 
         // list arcs by index sorted by head
-        void listArcsByHead(uint32_t start, uint32_t end)
+        void listArcsByHead(uint32_t start, uint32_t end, FILE *outFile= stdout)
         {
             for(uint32_t i= start; i<end && i<arcsByHead.size(); i++)
-                printf("%d -> %d\n", arcsByHead[i].tail, arcsByHead[i].head);
+                fprintf(outFile, "%d -> %d\n", arcsByHead[i].tail, arcsByHead[i].head);
         }
 
         // list arcs by index sorted by tail
-        void listArcsByTail(uint32_t start, uint32_t end)
+        void listArcsByTail(uint32_t start, uint32_t end, FILE *outFile= stdout)
         {
             for(uint32_t i= start; i<end && i<arcsByTail.size(); i++)
-                printf("%d -> %d\n", arcsByTail[i].tail, arcsByTail[i].head);
+                fprintf(outFile, "%d -> %d\n", arcsByTail[i].tail, arcsByTail[i].head);
         }
 
 
@@ -630,7 +630,11 @@ class CliCommand
         virtual string getSynopsis()        { return getName(); }
         // help text describing the function of the command
         virtual string getHelpText()        { return "Help text for " + getName() + "."; }
-        void syntaxError()                  { lastStatusMessage= string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n"; }
+        void syntaxError()
+        {
+            lastStatusMessage= string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n";
+            if(getReturnType()==RT_OTHER) cout << lastStatusMessage;
+        }
         const string &getStatusMessage()    { return lastStatusMessage; }
         virtual ReturnType getReturnType()= 0;
 
@@ -1419,7 +1423,7 @@ class ccShutdown: public CliCommand_RTVoid
 
         CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
-            if(words.size()!=1 || hasDataSet|| (inFile!=stdin))
+            if(words.size()!=1 || hasDataSet || (inFile!=stdin))
             {
                 syntaxError();
                 return CMD_FAILURE;
@@ -1455,9 +1459,10 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
 
         CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, vector<Digraph::arc> &result)
         {
-            if( hasDataSet || !Cli::isValidNodeID(words[1]) ||
+            if( hasDataSet ||
                 (findRoot? (words.size()!=2):
-                           (words.size()!=3 || !Cli::isValidNodeID(words[2]))) )
+                           (words.size()!=3 || !Cli::isValidNodeID(words[2]))) ||
+                (!Cli::isValidNodeID(words[1])) )
             {
                 syntaxError();
                 return CMD_FAILURE;
@@ -1492,6 +1497,40 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
 };
 
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccListArcs
+// list arcs by tail/head (debugging)
+template<bool byHead> class ccListArcs: public CliCommand_RTOther
+{
+    public:
+        string getName()            { return byHead? "list-by-head": "list-by-tail"; }
+        string getSynopsis()        { return getName() + " INDEX [N]"; }
+        string getHelpText()
+        {
+            return _("debugging: list N arcs starting from INDEX, ") + string(byHead? "sorted by head": "sorted by tail");
+        }
+
+        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        {
+            if( hasDataSet ||
+                (words.size()==3 && !Cli::isValidUint(words[2])) ||
+                (words.size()<2 || words.size()>3) ||
+                !Cli::isValidUint(words[1]) )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            uint32_t start= Cli::parseUint(words[1]),
+                     end= (words.size()==3? start+Cli::parseUint(words[2]): graph->size());
+            if(byHead) graph->listArcsByHead(start, end);
+            else graph->listArcsByTail(start, end);
+
+            return CMD_SUCCESS;
+        }
+};
+
+
 
 
 
@@ -1514,6 +1553,9 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
     commands.push_back(new ccListNeighborless<false>("list-roots"));
     commands.push_back(new ccListNeighborless<true>("list-leaves"));
     commands.push_back(new ccStats());
+
+    commands.push_back(new ccListArcs<false>());
+    commands.push_back(new ccListArcs<true>());
 
     commands.push_back(new ccClear());
     commands.push_back(new ccShutdown());

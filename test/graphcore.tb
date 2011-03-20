@@ -142,12 +142,12 @@
 
 # FIXME!
 # doesn't find 211 !
-; > list-leaves
-; ~ ^OK\..*:$
-; = 11
-; = 12
-; = 211
-; = 
+> list-leaves
+~ ^OK\..*:$
+= 11
+= 12
+= 211
+= 
 
 # test set operations #################################################
 > list-roots && list-predecessors 211 5
