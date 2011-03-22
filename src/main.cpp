@@ -1546,8 +1546,10 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
     commands.push_back(new ccListNeighborless<true>("list-leaves"));
     commands.push_back(new ccStats());
 
+#ifdef DEBUG_COMMANDS
     commands.push_back(new ccListArcs<false>());
     commands.push_back(new ccListArcs<true>());
+#endif
 
     commands.push_back(new ccClear());
     commands.push_back(new ccShutdown());
