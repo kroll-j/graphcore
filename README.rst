@@ -32,8 +32,10 @@ help
 ::
 
 
-	syntax: help [COMMAND]
-	get help on COMMAND/list commands.
+	syntax: help [COMMAND] | help operators
+	help: list commands
+	help COMMAND: get help on COMMAND
+	help operators: print help on operators
 
 .. _add-arcs:
 

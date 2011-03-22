@@ -1128,7 +1128,7 @@ template<bool leaves>
             }
             if(leaves) graph->findLeaves(result);
             else graph->findRoots(result);
-            cliSuccess(_("%zu %s%s\n"), result.size(), (leaves? _("leaf nodes"): _("root nodes")),
+            cliSuccess("%zu %s%s\n", result.size(), (leaves? _("leaf nodes"): _("root nodes")),
                        outFile==stdout? ":": "");
             return CMD_SUCCESS;
         }
@@ -1148,8 +1148,8 @@ class ccHelp: public CliCommand_RTOther
         { }
 
         string getName()            { return "help"; }
-        string getSynopsis()        { return getName() + _(" [COMMAND]"); }
-        string getHelpText()        { return _("get help on COMMAND/list commands."); }
+        string getSynopsis()        { return getName() + _(" [COMMAND] / ") + getName() + _(" operators"); }
+        string getHelpText()        { return _("help: list commands\n# help COMMAND: get help on COMMAND\n# help operators: print help on operators"); }
 
         CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
@@ -1160,10 +1160,41 @@ class ccHelp: public CliCommand_RTOther
             }
             if(words.size()==2)
             {
+                if(words[1]=="operators")
+                {
+                    cliSuccess("%s\n", outFile==stdout? ":": "");
+                    cout << lastStatusMessage << _("\
+# Operators can be used to combine the output of two commands into one\n\
+# data-set. They are used with infox syntax:\n\
+# \n\
+# <COMMAND> <OPERATOR> <COMMAND>\n\
+# \n\
+# This way, a composite command is formed. Note that if either operant\n\
+# fails, the composite command also fails.\n\
+# \n\
+# The following operators are currently specified:\n\
+# \n\
+# intersection (&&):\n\
+# The intersection operator takes two operants, both of wich must\n\
+# return a set of nodes. The result of the composite command is a set of\n\
+# nodes that contains only the nodes that are in both, the result of the\n\
+# left operand, and the result of the right. If and only if either\n\
+# operant returns NONE, the result is NONE. \n\
+# \n\
+# subtraction (&&!):\n\
+# The subtraction operator takes two operants, both of\n\
+# which must return a set of nodes. The result of the composite command is\n\
+# a set of nodes that contains only the nodes that are in the result of\n\
+# the left operand but not inthe result of the right operant. If and only\n\
+# if the left operant returns NONE, the result is NONE. If the right\n\
+# operant returns NONE, the result is the result of the left operant.\n\n");
+                    return CMD_SUCCESS;
+                }
                 CliCommand *cmd= cli->findCommand(words[1]);
                 if(!cmd)
                 {
                     cliFailure(_("%s: no such command.\n"), words[1].c_str());
+                    cout << lastStatusMessage << endl;
                     return CMD_FAILURE;
                 }
                 cliSuccess("%s\n", outFile==stdout? ":": "");
@@ -1240,34 +1271,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 return CMD_FAILURE;
             }
             uint32_t oldSize= graph->size();
-/*
-            vector<uint32_t> record;
-            for(unsigned lineno= 1; ; lineno++)
-            {
-                if(!Cli::readNodeIDRecord(inFile, record))
-                {
-                    cliError(_("couldn't read data set\n"));
-                    return CMD_ERROR;
-                }
-                else if(record.size()==0)
-                {
-                    graph->resort(oldSize);
-                    cliSuccess("\n");
-                    return CMD_SUCCESS;
-                }
-                else if(record.size()!=2)
-                {
-                    cliError(_("invalid data record in line %u\n"), lineno);
-                    return CMD_ERROR;
-                }
-                else
-                {
-                    if(record[0]==0 || record[1]==0) { cliError(_("invalid data record\n")); return CMD_ERROR; }
-                    graph->addArc( record[0], record[1], false );
-                    record.clear();
-                }
-            }
-*/
+
             vector< vector<uint32_t> > dataset;
             if(!readNodeset(inFile, dataset, 2))
                 return CMD_FAILURE;
@@ -1298,27 +1302,16 @@ class ccRemoveArcs: public CliCommand_RTVoid
                 syntaxError();
                 return CMD_FAILURE;
             }
-            vector<uint32_t> record;
-            while(true)
-            {
-                if(!Cli::readNodeIDRecord(inFile, record))
-                {
-                    cliError(_("couldn't read data set\n"));
-                    return CMD_ERROR;
-                }
-                else if(record.size()==0)
-                {
-                    cliSuccess("\n");
-                    return CMD_SUCCESS;
-                }
-                else if(record.size()!=2)
-                {
-                    cliError(_("invalid data record\n"));
-                    return CMD_ERROR;
-                }
-                graph->eraseArc( record[0], record[1] );
-                record.clear();
-            }
+
+            vector< vector<uint32_t> > dataset;
+            if(!readNodeset(inFile, dataset, 2))
+                return CMD_FAILURE;
+
+            for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+                graph->eraseArc((*i)[0], (*i)[1]);
+
+            cliSuccess("\n");
+            return CMD_SUCCESS;
         }
 };
 
@@ -1356,23 +1349,16 @@ template<Digraph::NodeRelation searchType>
                 syntaxError();
                 return CMD_FAILURE;
             }
-            vector<uint32_t> record, newNeighbors;
-            while(true)
-            {
-                if(!Cli::readNodeIDRecord(inFile, record))
-                {
-                    cliError(_("couldn't read data set\n"));
-                    return CMD_ERROR;
-                }
-                if(record.size()==0) break;
-                if(record.size()!=1)
-                {
-                    cliError(_("invalid data record\n"));
-                    return CMD_ERROR;
-                }
-                newNeighbors.push_back(record[0]);
-                record.clear();
-            }
+
+            vector<uint32_t> newNeighbors;
+            vector< vector<uint32_t> > dataset;
+
+            if(!readNodeset(inFile, dataset, 1))
+                return CMD_FAILURE;
+            newNeighbors.reserve(dataset.size());
+            for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+                newNeighbors.push_back((*i)[0]);
+
             if(graph->replaceNeighbors(Cli::parseUint(words[1]), newNeighbors, searchType==Digraph::DESCENDANTS))
             {
                 cliSuccess("\n");

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: graphcore\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-03-21 14:48+0100\n"
+"POT-Creation-Date: 2011-03-22 14:53+0100\n"
 "PO-Revision-Date: 2011-02-28 06:20+0100\n"
 "Last-Translator: Your name <email@address.blah>\n"
 "Language-Team: English\n"
@@ -90,7 +90,7 @@ msgstr ""
 msgid "invalid node ID in line %d\n"
 msgstr ""
 
-#: src/main.cpp:1046 src/main.cpp:1340
+#: src/main.cpp:1046 src/main.cpp:1333
 msgid " NODE"
 msgstr ""
 
@@ -140,11 +140,6 @@ msgid "list root nodes (nodes without predecessors)."
 msgstr ""
 
 #: src/main.cpp:1131
-#, c-format
-msgid "%zu %s%s\n"
-msgstr ""
-
-#: src/main.cpp:1131
 msgid "leaf nodes"
 msgstr ""
 
@@ -153,94 +148,122 @@ msgid "root nodes"
 msgstr ""
 
 #: src/main.cpp:1151
-msgid " [COMMAND]"
+msgid " [COMMAND] / "
+msgstr ""
+
+#: src/main.cpp:1151
+msgid " operators"
 msgstr ""
 
 #: src/main.cpp:1152
-msgid "get help on COMMAND/list commands."
+msgid ""
+"help: list commands\n"
+"# help COMMAND: get help on COMMAND\n"
+"# help operators: print help on operators"
 msgstr ""
 
 #: src/main.cpp:1166
+msgid ""
+"# Operators can be used to combine the output of two commands into one\n"
+"# data-set. They are used with infox syntax:\n"
+"# \n"
+"# <COMMAND> <OPERATOR> <COMMAND>\n"
+"# \n"
+"# This way, a composite command is formed. Note that if either operant\n"
+"# fails, the composite command also fails.\n"
+"# \n"
+"# The following operators are currently specified:\n"
+"# \n"
+"# intersection (&&):\n"
+"# The intersection operator takes two operants, both of wich must\n"
+"# return a set of nodes. The result of the composite command is a set of\n"
+"# nodes that contains only the nodes that are in both, the result of the\n"
+"# left operand, and the result of the right. If and only if either\n"
+"# operant returns NONE, the result is NONE. \n"
+"# \n"
+"# subtraction (&&!):\n"
+"# The subtraction operator takes two operants, both of\n"
+"# which must return a set of nodes. The result of the composite command is\n"
+"# a set of nodes that contains only the nodes that are in the result of\n"
+"# the left operand but not inthe result of the right operant. If and only\n"
+"# if the left operant returns NONE, the result is NONE. If the right\n"
+"# operant returns NONE, the result is the result of the left operant.\n"
+"\n"
+msgstr ""
+
+#: src/main.cpp:1196
 #, c-format
 msgid "%s: no such command.\n"
 msgstr ""
 
-#: src/main.cpp:1174
+#: src/main.cpp:1205
 #, c-format
 msgid "available commands%s\n"
 msgstr ""
 
-#: src/main.cpp:1196
+#: src/main.cpp:1227
 msgid ""
 "print some statistics about the graph in the form of a name,value data set.\n"
 msgstr ""
 
-#: src/main.cpp:1197
+#: src/main.cpp:1228
 msgid "names and their meanings:"
 msgstr ""
 
-#: src/main.cpp:1233
+#: src/main.cpp:1264
 msgid ""
 "read a data set of arcs and add them to the graph. empty line terminates the "
 "set."
 msgstr ""
 
-#: src/main.cpp:1292
+#: src/main.cpp:1296
 msgid ""
 "read a data set of arcs and remove them from the graph. empty line "
 "terminates the set."
 msgstr ""
 
-#: src/main.cpp:1306 src/main.cpp:1364
-msgid "couldn't read data set\n"
-msgstr ""
-
-#: src/main.cpp:1316 src/main.cpp:1370
-msgid "invalid data record\n"
-msgstr ""
-
-#: src/main.cpp:1345
+#: src/main.cpp:1338
 msgid "read data set of nodes and replace predecessors of NODE with given set."
 msgstr ""
 
-#: src/main.cpp:1346
+#: src/main.cpp:1339
 msgid "read data set of nodes and replace successors of NODE with given set."
 msgstr ""
 
-#: src/main.cpp:1383
+#: src/main.cpp:1369
 msgid "internal error: Digraph::replaceNeighbors() failed.\n"
 msgstr ""
 
-#: src/main.cpp:1398
+#: src/main.cpp:1384
 msgid "clear the graph model."
 msgstr ""
 
-#: src/main.cpp:1422
+#: src/main.cpp:1414
 msgid "shutdown the graph processor."
 msgstr ""
 
-#: src/main.cpp:1431
+#: src/main.cpp:1423
 #, c-format
 msgid "shutting down pid %d.\n"
 msgstr ""
 
-#: src/main.cpp:1455
+#: src/main.cpp:1447
 msgid ""
 "find the path from X to nearest root node. return data set of arcs "
 "representing the path."
 msgstr ""
 
-#: src/main.cpp:1457
+#: src/main.cpp:1449
 msgid ""
 "find the shortest path from node X to node Y. return data set of arcs "
 "representing the path."
 msgstr ""
 
-#: src/main.cpp:1490
+#: src/main.cpp:1482
 #, c-format
 msgid "%zu nodes visited, path length %zu%s\n"
 msgstr ""
 
-#: src/main.cpp:1510
+#: src/main.cpp:1502
 msgid "debugging: list N arcs starting from INDEX, "
 msgstr ""
