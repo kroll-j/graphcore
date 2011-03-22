@@ -10,7 +10,7 @@ graphcore:	src/main.cpp
 		g++ $(CCFLAGS) -O3 -fexpensive-optimizations src/main.cpp $(LDFLAGS) -ographcore
 
 graphcore.dbg:	src/main.cpp
-		g++ $(CCFLAGS) -ggdb src/main.cpp $(LDFLAGS) -ographcore.dbg
+		g++ $(CCFLAGS) -DDEBUG_COMMANDS -ggdb src/main.cpp $(LDFLAGS) -ographcore.dbg
 
 # updatelang: update the language files
 # running this will generate changes in the repository
