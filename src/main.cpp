@@ -1416,8 +1416,14 @@ class ccClear: public CliCommand_RTVoid
 // shutdown command.
 class ccShutdown: public CliCommand_RTVoid
 {
+    private:
+        string name;
+
     public:
-        string getName()            { return "shutdown"; }
+        ccShutdown(const char *_name= "shutdown"): name(_name)
+        { }
+
+        string getName()            { return name; }
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("shutdown the graph processor."); }
 
@@ -1542,11 +1548,11 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
     commands.push_back(new ccRemoveArcs());
     commands.push_back(new ccReplaceNeighbors<Digraph::PREDECESSORS>("replace-predecessors"));
     commands.push_back(new ccReplaceNeighbors<Digraph::DESCENDANTS>("replace-successors"));
-    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, true>("list-predecessors"));
-    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, true>("list-successors"));
-    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, true>("list-neighbors"));
-    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, false>("list-predecessors-nonrecursive"));
-    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, false>("list-successors-nonrecursive"));
+    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, true>("traverse-predecessors"));
+    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, true>("traverse-successors"));
+    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, true>("traverse-neighbors"));
+    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, false>("list-predecessors"));
+    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, false>("list-successors"));
 //    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, false>("list-neighbors-nonrecursive"));
     commands.push_back(new ccFindPath<false>("find-path"));
     commands.push_back(new ccFindPath<true>("find-root"));
@@ -1559,6 +1565,7 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
 
     commands.push_back(new ccClear());
     commands.push_back(new ccShutdown());
+    commands.push_back(new ccShutdown("quit"));
 }
 
 

@@ -5,22 +5,24 @@ commands:
 
 	- help_
 	- add-arcs_
-	- erase-arcs_
+	- remove-arcs_
 	- replace-predecessors_
 	- replace-successors_
+	- traverse-predecessors_
+	- traverse-successors_
+	- traverse-neighbors_
 	- list-predecessors_
 	- list-successors_
-	- list-neighbors_
-	- list-predecessors-nonrecursive_
-	- list-successors-nonrecursive_
-	- list-neighbors-nonrecursive_
 	- find-path_
 	- find-root_
 	- list-roots_
 	- list-leaves_
 	- stats_
+	- list-by-tail_
+	- list-by-head_
 	- clear_
 	- shutdown_
+	- quit_
 
 .. _help:
 
@@ -44,16 +46,16 @@ add-arcs
 	syntax: add-arcs {:|<}
 	read a data set of arcs and add them to the graph. empty line terminates the set.
 
-.. _erase-arcs:
+.. _remove-arcs:
 
-erase-arcs
+remove-arcs
 
 
 ::
 
 
-	syntax: erase-arcs {:|<}
-	read a data set of arcs and erase them from the graph. empty line terminates the set.
+	syntax: remove-arcs {:|<}
+	read a data set of arcs and remove them from the graph. empty line terminates the set.
 
 .. _replace-predecessors:
 
@@ -77,6 +79,39 @@ replace-successors
 	syntax: replace-successors NODE {:|<}
 	read data set of nodes and replace successors of NODE with given set.
 
+.. _traverse-predecessors:
+
+traverse-predecessors
+
+
+::
+
+
+	syntax: traverse-predecessors NODE DEPTH
+	list NODE and its predecessors recursively up to DEPTH.
+
+.. _traverse-successors:
+
+traverse-successors
+
+
+::
+
+
+	syntax: traverse-successors NODE DEPTH
+	list NODE and its successors recursively up to DEPTH.
+
+.. _traverse-neighbors:
+
+traverse-neighbors
+
+
+::
+
+
+	syntax: traverse-neighbors NODE DEPTH
+	list NODE and its neighbors recursively up to DEPTH.
+
 .. _list-predecessors:
 
 list-predecessors
@@ -85,8 +120,8 @@ list-predecessors
 ::
 
 
-	syntax: list-predecessors NODE DEPTH
-	list NODE and its predecessors recursively up to DEPTH.
+	syntax: list-predecessors NODE
+	list direct predecessors of NODE.
 
 .. _list-successors:
 
@@ -96,52 +131,8 @@ list-successors
 ::
 
 
-	syntax: list-successors NODE DEPTH
-	list NODE and its successors recursively up to DEPTH.
-
-.. _list-neighbors:
-
-list-neighbors
-
-
-::
-
-
-	syntax: list-neighbors NODE DEPTH
-	list NODE and its neighbors recursively up to DEPTH.
-
-.. _list-predecessors-nonrecursive:
-
-list-predecessors-nonrecursive
-
-
-::
-
-
-	syntax: list-predecessors-nonrecursive NODE
-	list direct predecessors of NODE.
-
-.. _list-successors-nonrecursive:
-
-list-successors-nonrecursive
-
-
-::
-
-
-	syntax: list-successors-nonrecursive NODE
+	syntax: list-successors NODE
 	list direct successors of NODE.
-
-.. _list-neighbors-nonrecursive:
-
-list-neighbors-nonrecursive
-
-
-::
-
-
-	syntax: list-neighbors-nonrecursive NODE
-	list direct neighbors of NODE.
 
 .. _find-path:
 
@@ -185,7 +176,7 @@ list-leaves
 
 
 	syntax: list-leaves
-	list leaf nodes (nodes without descendants).
+	list leaf nodes (nodes without successors).
 
 .. _stats:
 
@@ -200,12 +191,32 @@ stats
 	names and their meanings:
 	ArcCount	number of arcs
 	ArcRamKiB	total RAM consumed by arc data, in KiB
-	AvgPredecessors	average predecessors per node
-	AvgSuccessors	average successors per node
 	DataInvalid	nonzero if any obvious errors were found in graph data
 	MaxNodeID	greatest node ID
 	MinNodeID	lowest node ID
 	NumDups	number of duplicates found (must be zero)
+
+.. _list-by-tail:
+
+list-by-tail
+
+
+::
+
+
+	syntax: list-by-tail INDEX [N]
+	debugging: list N arcs starting from INDEX, sorted by tail
+
+.. _list-by-head:
+
+list-by-head
+
+
+::
+
+
+	syntax: list-by-head INDEX [N]
+	debugging: list N arcs starting from INDEX, sorted by head
 
 .. _clear:
 
@@ -227,5 +238,16 @@ shutdown
 
 
 	syntax: shutdown
+	shutdown the graph processor.
+
+.. _quit:
+
+quit
+
+
+::
+
+
+	syntax: quit
 	shutdown the graph processor.
 

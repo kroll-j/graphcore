@@ -22,14 +22,14 @@
 =
 
 # check successors #################################################
-> list-successors-nonrecursive 1
+> list-successors 1
 ~ ^OK\..*:$
 = 11
 = 12
 = 13
 = 
 
-> list-successors 1 1
+> traverse-successors 1 1
 ~ ^OK\..*:$
 = 1
 = 11
@@ -37,7 +37,7 @@
 = 13
 = 
 
-> list-successors 1 2
+> traverse-successors 1 2
 ~ ^OK\..*:$
 = 1
 = 11
@@ -46,7 +46,7 @@
 = 21
 = 
 
-> list-successors 1 3
+> traverse-successors 1 3
 ~ ^OK\..*:$
 = 1
 = 11
@@ -57,35 +57,35 @@
 = 
 
 # check predecessors #################################################
-> list-predecessors 1 5
+> traverse-predecessors 1 5
 ~ ^OK\..*:$
 = 1
 =
 
-> list-predecessors-nonrecursive 1
+> list-predecessors 1
 ~ ^OK\..*:$
 = 
 
-> list-predecessors 211 0
+> traverse-predecessors 211 0
 ~ ^OK\..*:$
 = 211
 = 
 
-> list-predecessors 666 1
+> traverse-predecessors 666 1
 ~ ^NONE\.
 
-> list-predecessors 1 0
+> traverse-predecessors 1 0
 ~ ^OK\..*:$
 = 1
 = 
 
-> list-predecessors 211 1
+> traverse-predecessors 211 1
 ~ ^OK\..*:$
 = 211
 = 21
 = 
 
-> list-predecessors 211 2
+> traverse-predecessors 211 2
 ~ ^OK\..*:$
 = 211
 = 21
@@ -149,25 +149,25 @@
 = 
 
 # test set operations #################################################
-> list-roots && list-predecessors 211 5
+> list-roots && traverse-predecessors 211 5
 ~ ^OK\..*:$
 = 1
 = 2
 = 
 
-> list-roots && list-predecessors 13 5
+> list-roots && traverse-predecessors 13 5
 ~ ^OK\..*:$
 = 1
 = 
 
-> list-successors 21 5 && list-successors 2 5
+> traverse-successors 21 5 && traverse-successors 2 5
 ~ ^OK\..*:$
 = 12
 = 21
 = 211
 = 
 
-> list-successors 1 5 &&! list-successors 2 5
+> traverse-successors 1 5 &&! traverse-successors 2 5
 ~ ^OK\..*:$
 = 1
 = 11
@@ -176,12 +176,12 @@
 
 #(fixed)
 # returns NONE, should return empty set
-> list-successors 13 5 &&! list-successors 1 5
+> traverse-successors 13 5 &&! traverse-successors 1 5
 ~ ^OK\..*:$
 = 
 
 #(fixed)
-> list-successors 21 5 &&! list-leaves
+> traverse-successors 21 5 &&! list-leaves
 ~ ^OK\..*:$
 = 21
 =
@@ -199,29 +199,29 @@
 # (this crap needs to be documented somewhere..)
 
 # J: list-*-nonrecursive never returns NONE, so these tests don't work as expected:
-; > list-roots && list-successors-nonrecursive 666
+; > list-roots && list-successors 666
 ; ~ ^NONE\..*$
 ; 
-; > list-successors-nonrecursive 666 && list-roots
+; > list-successors 666 && list-roots
 ; ~ ^NONE\..*$
 
 # J: these work:
-> list-roots && list-successors 666 1
+> list-roots && traverse-successors 666 1
 ~ ^NONE\..*$
 
-> list-successors 666 1 && list-roots
+> traverse-successors 666 1 && list-roots
 ~ ^NONE\..*$
 
-> list-roots &&! list-predecessors-nonrecursive 666
+> list-roots &&! list-predecessors 666
 ~ ^OK\..*:$
 = 1
 = 2
 =
 
-> list-successors 666 1 &&! list-roots
+> traverse-successors 666 1 &&! list-roots
 ~ ^NONE\..*$
 
-; > list-roots &&! list-predecessors-nonrecursive 666
+; > list-roots &&! list-predecessors 666
 
 # insert dupes #################################################
 > add-arcs:
@@ -237,7 +237,7 @@
 *
 =
 
-> list-successors-nonrecursive 1
+> list-successors 1
 ~ ^OK\..*:$
 = 11
 = 12
@@ -258,7 +258,7 @@
 *
 =
 
-> list-successors-nonrecursive 21
+> list-successors 21
 ~ ^OK\..*:$
 = 211
 =
@@ -361,20 +361,20 @@
 > find-path 2 4
 ~ ^NONE\.(.*[^:])?$
 
-> list-successors 3 1
+> traverse-successors 3 1
 ~ ^OK\..*:$
 = 3
 = 1
 =
 
-> list-successors 2 6
+> traverse-successors 2 6
 ~ ^OK\..*:$
 = 2
 = 3
 = 1
 = 
 
-> list-successors 4 6
+> traverse-successors 4 6
 ~ ^OK\..*:$
 = 4
 = 1
@@ -382,7 +382,7 @@
 = 3
 = 
 
-> list-predecessors 4 6
+> traverse-predecessors 4 6
 ~ ^OK\..*:$
 = 4
 = 
@@ -392,10 +392,10 @@
 > 
 ~ ^OK\.(.*[^:])?$
 
-> list-successors 4 2
+> traverse-successors 4 2
 ~ ^NONE\.(.*[^:])?$
 
-> list-predecessors-nonrecursive 1 
+> list-predecessors 1 
 ~ ^OK\..*:$
 = 3
 = 
@@ -406,14 +406,14 @@
 > 
 ~ ^OK\.(.*[^:])?$
 
-> list-predecessors 4 1
+> traverse-predecessors 4 1
 ~ ^OK\..*:$
 = 4
 = 2
 = 3
 =
 
-> list-successors 2 1
+> traverse-successors 2 1
 ~ ^OK\..*:$
 = 2
 = 3
@@ -427,19 +427,19 @@
 > list-successors
 ~ ^FAILED!(.*[^:])?$
 
-> list-successors 1
+> traverse-successors 1
 ~ ^FAILED!(.*[^:])?$
 
-> list-successors 1 1 1
+> traverse-successors 1 1 1
 ~ ^FAILED!(.*[^:])?$
 
-> list-successors -1 -1
+> traverse-successors -1 -1
 ~ ^FAILED!(.*[^:])?$
 
-> list-successors 1.2 2.3
+> traverse-successors 1.2 2.3
 ~ ^FAILED!(.*[^:])?$
 
-> list-successors x y
+> traverse-successors x y
 ~ ^FAILED!(.*[^:])?$
 
 # (fixed)
