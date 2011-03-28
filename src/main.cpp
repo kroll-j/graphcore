@@ -37,7 +37,7 @@ double getTime()
 // test if stdout refers to tty
 bool isInteractive()
 {
-    return isatty(STDOUT_FILENO) || isatty(STDIN_FILENO);
+    return isatty(STDOUT_FILENO);
 }
 
 
@@ -823,11 +823,10 @@ class Cli
         char *getLine()
         {
             if(isInteractive()) return readline("> ");
-            size_t n;
-            char *lineptr= 0;
-            ssize_t s= getline(&lineptr, &n, stdin);
-            if(s<0) return 0;
-            return lineptr;
+            char *linebuf= (char*)malloc(1024);
+            char *l= fgets(linebuf, 1024, stdin);
+            if(!l) free(linebuf);
+            return l;
         }
 
         // execute a command
@@ -1420,7 +1419,7 @@ class ccShutdown: public CliCommand_RTVoid
                 syntaxError();
                 return CMD_FAILURE;
             }
-            cliSuccess(_("shutting down pid %d.\n"), getpid());
+            cliSuccess(_("shutting down pid %d.\n"), (int)getpid());
             cli->quit();
             return CMD_SUCCESS;
         }
