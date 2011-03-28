@@ -721,6 +721,7 @@ class Cli
                 if(outRedir) fclose(outRedir), outRedir= 0;
                 if( (command= getLine())==0 ) return;
                 char *completeCommand= strdup(command);
+                if(!completeCommand) { printf("ERROR! out of memory.\n"); return; }
                 char *d= strchr(command, '>');
                 if(d)
                 {
@@ -824,6 +825,7 @@ class Cli
         {
             if(isInteractive()) return readline("> ");
             char *linebuf= (char*)malloc(1024);
+            if(!linebuf) return 0;
             char *l= fgets(linebuf, 1024, stdin);
             if(!l) free(linebuf);
             return l;
