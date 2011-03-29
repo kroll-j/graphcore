@@ -72,6 +72,7 @@ class Digraph
         {
         }
 
+
         // add an arc to the graph
         void addArc(arc a, bool doSort= true)
         {
@@ -361,6 +362,14 @@ class Digraph
 
 
         // below is intermediate/internal testing stuff unrelated to the spec.
+
+
+        void sizeSanityCheck()
+        {
+            printf("distance between arcs in bytes (should be 8): %d\n",
+                   (char*)&arcsByHead[1] - (char*)&arcsByHead[0]);
+        }
+
 
         // check for duplicates
         void checkDups()
@@ -1589,6 +1598,9 @@ class ccMallocStats: public CliCommand_RTOther
                 syntaxError();
                 return CMD_FAILURE;
             }
+
+            graph->sizeSanityCheck();
+
 #ifdef __linux__
             malloc_stats();
 #else
