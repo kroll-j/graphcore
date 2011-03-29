@@ -18,6 +18,10 @@
 #include <readline/history.h>
 #include <libintl.h>
 
+#ifdef DEBUG_COMMANDS
+#include <malloc.h>
+#endif
+
 using namespace std;
 
 
@@ -1565,6 +1569,33 @@ class ccAddStuff: public CliCommand_RTOther
         }
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccMallocStats
+// (debugging)
+class ccMallocStats: public CliCommand_RTOther
+{
+    public:
+        string getName()            { return "malloc-stats"; }
+        string getSynopsis()        { return getName(); }
+        string getHelpText()
+        {
+            return _("debugging");
+        }
+
+        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        {
+            if( hasDataSet || words.size()!=1 )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            malloc_stats();
+
+            return CMD_SUCCESS;
+        }
+};
+
 
 
 
@@ -1593,6 +1624,7 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
     commands.push_back(new ccListArcs<false>());
     commands.push_back(new ccListArcs<true>());
     commands.push_back(new ccAddStuff());
+    commands.push_back(new ccMallocStats());
 #endif
 
     commands.push_back(new ccClear());
