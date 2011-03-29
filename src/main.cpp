@@ -416,7 +416,7 @@ class Digraph
 
 
     protected:
-        typedef vector<arc> arcContainer;
+        typedef deque<arc> arcContainer;
         arcContainer arcsByTail, arcsByHead;
 
         // helper class for iterating over all predecessors/successors (or both) of a node
@@ -1525,6 +1525,48 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
 
 
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccAddStuff
+// (debugging)
+class ccAddStuff: public CliCommand_RTOther
+{
+    public:
+        string getName()            { return "add-stuff"; }
+        string getSynopsis()        { return getName(); }
+        string getHelpText()
+        {
+            return _("debugging");
+        }
+
+        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        {
+            if( hasDataSet ||
+                (words.size()==3 && !Cli::isValidUint(words[2])) ||
+                (words.size()<2 || words.size()>3) ||
+                !Cli::isValidUint(words[1]) )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            uint32_t num= Cli::parseUint(words[1]);
+
+            vector< vector<uint32_t> > tmp;
+            tmp.resize(num);
+
+            uint32_t oldSize= graph->size();
+            for(unsigned i= 0; i<num; i++)
+            {
+                graph->addArc(rand()%10000, rand()%10000, false);
+            }
+            graph->resort(oldSize);
+
+            return CMD_SUCCESS;
+        }
+};
+
+
+
 
 
 
@@ -1550,6 +1592,7 @@ Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
 #ifdef DEBUG_COMMANDS
     commands.push_back(new ccListArcs<false>());
     commands.push_back(new ccListArcs<true>());
+    commands.push_back(new ccAddStuff());
 #endif
 
     commands.push_back(new ccClear());
