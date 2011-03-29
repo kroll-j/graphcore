@@ -432,8 +432,8 @@ class Digraph
 
 
     protected:
-//        typedef deque< arc, debugAllocator<arc> > arcContainer;
-        typedef vector< arc > arcContainer;
+        typedef deque< arc > arcContainer;
+//        typedef vector< arc > arcContainer;
         arcContainer arcsByTail, arcsByHead;
 
         // helper class for iterating over all predecessors/successors (or both) of a node
