@@ -1538,6 +1538,8 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
 };
 
 
+#ifdef DEBUG_COMMANDS
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccListArcs
 // list arcs by tail/head (debugging)
@@ -1570,7 +1572,6 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
             return CMD_SUCCESS;
         }
 };
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1648,7 +1649,7 @@ class ccMallocStats: public CliCommand_RTOther
         }
 };
 
-
+#endif // DEBUG_COMMANDS
 
 
 
