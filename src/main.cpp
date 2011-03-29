@@ -1589,8 +1589,11 @@ class ccMallocStats: public CliCommand_RTOther
                 syntaxError();
                 return CMD_FAILURE;
             }
-
+#ifdef __linux__
             malloc_stats();
+#else
+            printf("not implemented.\n");
+#endif
 
             return CMD_SUCCESS;
         }
