@@ -5,12 +5,14 @@
 #include <cstdio>
 #include <iostream>
 #include <vector>
+#include <limits>
 #include <deque>
 #include <queue>
 #include <set>
 #include <map>
 #include <algorithm>
 #include <functional>
+
 #include <stdint.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -366,6 +368,7 @@ class Digraph
 
         void sizeSanityCheck()
         {
+            // just to show that there is no padding for 32-bit values. even on 64-bit platforms.
             printf("distance between arcs in bytes (should be 8): %d\n",
                    (char*)&arcsByHead[1] - (char*)&arcsByHead[0]);
         }
@@ -429,7 +432,8 @@ class Digraph
 
 
     protected:
-        typedef deque<arc> arcContainer;
+//        typedef deque< arc, debugAllocator<arc> > arcContainer;
+        typedef vector< arc > arcContainer;
         arcContainer arcsByTail, arcsByHead;
 
         // helper class for iterating over all predecessors/successors (or both) of a node
@@ -1284,8 +1288,9 @@ class ccAddArcs: public CliCommand_RTVoid
                 syntaxError();
                 return CMD_FAILURE;
             }
-            uint32_t oldSize= graph->size();
 
+/*
+            uint32_t oldSize= graph->size();
             vector< vector<uint32_t> > dataset;
             if(!readNodeset(inFile, dataset, 2))
                 return CMD_FAILURE;
@@ -1293,8 +1298,38 @@ class ccAddArcs: public CliCommand_RTVoid
             for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
                 graph->addArc((*i)[0], (*i)[1], false);
             graph->resort(oldSize);
+*/
 
-            return CMD_SUCCESS;
+            uint32_t oldSize= graph->size();
+            vector<uint32_t> record;
+            bool ok= true;
+            cliSuccess("\n");
+            for(unsigned lineno= 1; ; lineno++)
+            {
+                record.clear();
+                if( !Cli::readNodeIDRecord(inFile, record) )
+                {
+                    if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
+                    ok= false;
+                }
+                else if(record.size()==0)
+                {
+                    if(!ok) return CMD_ERROR;
+                    graph->resort(oldSize);
+                    cliSuccess("\n");
+                    return CMD_SUCCESS;
+                }
+                else if(record.size()!=2)
+                {
+                    if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
+                    ok= false;
+                }
+                else
+                {
+                    if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
+                    if(ok) graph->addArc(record[0], record[1], false);
+                }
+            }
         }
 };
 
@@ -1564,8 +1599,8 @@ class ccAddStuff: public CliCommand_RTOther
 
             uint32_t num= Cli::parseUint(words[1]);
 
-            vector< vector<uint32_t> > tmp;
-            tmp.resize(num);
+//            vector< vector<uint32_t> > tmp;
+//            tmp.resize(num);
 
             uint32_t oldSize= graph->size();
             for(unsigned i= 0; i<num; i++)
@@ -1600,17 +1635,18 @@ class ccMallocStats: public CliCommand_RTOther
             }
 
             graph->sizeSanityCheck();
+//            printf("Mmapped: %dM used: %dM (%d%%)\n",
+//                   gMmappedBytes/(1024*1024), gUsedBytes/(1024*1024), gUsedBytes/(gMmappedBytes/100));
 
 #ifdef __linux__
             malloc_stats();
 #else
-            printf("not implemented.\n");
+            printf("malloc_stats() not implemented.\n");
 #endif
 
             return CMD_SUCCESS;
         }
 };
-
 
 
 
