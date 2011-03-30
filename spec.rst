@@ -172,40 +172,37 @@ replace-successors `NODE` {:\|<}
   arcs that have `NODE` as their head and each node from the successor set as their tail.
   The successor set is provided as a single column data-set.
 
-list-predecessors `NODE` `DEPTH`
+traverse-predecessors `NODE` `DEPTH`
   returns a data-set containing all nodes from which `NODE` can be reached using a path
   of at most `DEPTH` arcs, including `NODE` itself. If `NODE` is not in the graph, the
   response is NONE. If node has no predecessors, but successors, or if `DEPTH` is 0,
   `NODE` itself is returned.
 
-list-successors `NODE` `DEPTH`
+traverse-successors `NODE` `DEPTH`
   returns a data-set containing all nodes reachable from `NODE` using a path
   of at most `DEPTH` arcs, including `NODE` itself. If `NODE` is not in the graph, the
   response is NONE. If node has no successors, but predecessors, or if `DEPTH` is 0,
   `NODE` itself is returned.
 
-list-neighbors `NODE` `DEPTH`
-  returns the union of the node sets that would be returned by
-  list-predecessors `NODE` `DEPTH` and list-successors `NODE` `DEPTH`.
-
-list-predecessors-nonrecursive `NODE`
+traverse-neighbors `NODE` `DEPTH`
+  analog to traverse-successors and traverse-predecessors, return a data set consisting of
+  all neighbors (that is, predecessors and successors) of `NODE`, up to the given `DEPTH`.
+  (note that this is different than the union of traverse-predecessors and traverse-successors
+  with the same depth.)
+  
+list-predecessors `NODE`
   returns a data-set containing all nodes for which there is an arc that has `NODE`
   as the tail and that node as the head. This set does not contain `NODE` itself,
   unless an arc from `NODE` back to `NODE` (a loop) exists.
   If `NODE` is not in the graph, the response is NONE.
   If node has no predecessors, but successors, the empty set is returned.
 
-list-successors-nonrecursive `NODE`
+list-successors `NODE`
   returns a data-set containing all nodes for which there is an arc that has `NODE`
   as the head and that node as the tail. This set does not contain `NODE` itself,
   unless an arc from `NODE` back to `NODE` (a loop) exists.
   If `NODE` is not in the graph, the response is NONE.
   If node has no successors, but predecessors, the empty set is returned.
-
-list-neighbors-nonrecursive `NODE`
-  returns the union of the node sets that would be returned by
-  list-predecessors-nonrecursive `NODE` `DEPTH` 
-  and list-successors-nonrecursive `NODE` `DEPTH`.
 
 find-path `X` `Y`
   returns a shortest path from node `X` to node `Y`, if such a path exists. If no

@@ -18,8 +18,6 @@ commands:
 	- list-roots_
 	- list-leaves_
 	- stats_
-	- list-by-tail_
-	- list-by-head_
 	- clear_
 	- shutdown_
 	- quit_
@@ -32,7 +30,7 @@ help
 ::
 
 
-	syntax: help [COMMAND] | help operators
+	syntax: help [COMMAND] / help operators
 	help: list commands
 	help COMMAND: get help on COMMAND
 	help operators: print help on operators
@@ -197,28 +195,6 @@ stats
 	MaxNodeID	greatest node ID
 	MinNodeID	lowest node ID
 	NumDups	number of duplicates found (must be zero)
-
-.. _list-by-tail:
-
-list-by-tail
-
-
-::
-
-
-	syntax: list-by-tail INDEX [N]
-	debugging: list N arcs starting from INDEX, sorted by tail
-
-.. _list-by-head:
-
-list-by-head
-
-
-::
-
-
-	syntax: list-by-head INDEX [N]
-	debugging: list N arcs starting from INDEX, sorted by head
 
 .. _clear:
 
