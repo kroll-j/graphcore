@@ -3,7 +3,7 @@ GraphCore Specification
 =======================
 GraphCore is a program for maintaining and processing large graphs in memory. It
 provides a simple command oriented interface using the stdin/stdout streams. The
-command interface is designed to be usable as a synchronized but sessionles 
+command interface is designed to be usable as a synchronized but sessionless
 client/server communication protocol.
 
 Data Model
@@ -14,9 +14,9 @@ are not part of arcs are unknown to GraphCore.
 
 Nodes are represented by integer IDs in the range between 1 and 2^32.
 
-Pathes through the graph are represented as ordered lists of arcs.
+Paths through the graph are represented as ordered lists of arcs.
 
-Root nodes are nodes with no predecessors, leave nodes are nodes with no successor.
+Root nodes are nodes with no predecessors, leaf nodes are nodes with no successor.
 
 Interface Principles
 -----------------------
@@ -36,31 +36,31 @@ Commands
 parameters. If the command ends with a colon (:), it is followed by a 
 data set, terminated by an empty line. 
 
-**FIXME** Note that if a command indicates that it is followed by a dataset, that
+Note that if a command indicates that it is followed by a dataset, that
 dataset must always be read completely from the input pipe, even if
 the command is illegal or the dataset is invalid.
 
 Commands are idempotent, executing the same command several times in a row
-has the same effect as executing it only once. Not state (except for the 
+has the same effect as executing it only once. No state (except for the 
 graph itself) is maintened between executing commands.
 
-Commands that take a data-set as input may also load the data-set from a file
+Commands that take a data-set as input may also load the data-set from a file.
 To achieve this, the command is not terminated by a colon and followed by a 
 data set, but it is instead followed in the same line by a smaller-than sign
 (“<”) and the data file's name. This is analogous to the pipe-syntax used by
 Unix shells. Trying to load data from a non-existing or malformed file
-results in an error or failure  (see below). The data in the file must followed
+results in an error or failure  (see below). The data in the file must follow
 the syntax for data-sets (see blow).
 
-**FIXME** Note that if the command returns an empty result or a NONE-result (see
+Note that if the command returns an empty result or a NONE-result (see
 below), and the result is redirected to a file, an empty file shall be written.
 
-Commands can also redirect thir result into a file.  To achieve this, the command 
+Commands can also redirect their result into a file.  To achieve this, the command 
 is followed by a larger-than sign (“>”) and target file's name, in the same line. 
 This is analogous to the pipe-syntax used by Unix shells. Trying to redirect the 
 output of a command that does not generate a result set results in a failure of
 the command. Failure to actually write the data to the file results in error 
-or failure (see below). The data written to the file followes the syntax for
+or failure (see below). The data written to the file follows the syntax for
 data-sets (see blow).
 
 Commands can be composited from multiple commands using **operators** to join them
@@ -125,7 +125,7 @@ A path in the graph is represented as an ordered list of arcs, similar to the wa
 a set of arcs is represented.
 
 Plain text lines can also be contained represented by a data-set. By convention, they
-begin with an `#`. Any line starting with a # may be interpreted as consisitng of a single
+begin with an `#`. Any line starting with a # may be interpreted as consisting of a single
 field. Any field separators can be treated as regular characters.
 
 If a command encounters illegal lines or fields in a data-set, it will read all lines
@@ -224,7 +224,7 @@ list-roots
   are no nodes in the graph, or all nodes are part of circles, the empty set is returned.
 
 list-leaves
-  **FIXME** list all nodes that have no successors, as a single column data-set. If there
+  list all nodes that have no successors, as a single column data-set. If there
   are no nodes in the graph, or all nodes are part of circles, the empty set is returned.
 
 Operator Overview
@@ -244,7 +244,7 @@ intersection (&&):
   The intersection operator takes two operants, both of wich must return a set of nodes.
   The result of the composite command is a set of nodes that contains only the nodes
   that are in both, the result of the left operand, and the result of the right.
-  **FIXME** If and only if either operant returns NONE, the result is NONE. 
+  If and only if either operant returns NONE, the result is NONE. 
 
 subtraction (&&!):
   The subtraction operator takes two operants, both of wich must return a set of nodes.
