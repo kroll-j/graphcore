@@ -44,26 +44,26 @@ class CliCommand
         virtual ~CliCommand() { }
 
         // the command name
-        virtual string getName()            { return "CliCommand"; }
+        virtual std::string getName()            { return "CliCommand"; }
         // one line describing the command and its parameters
-        virtual string getSynopsis()        { return getName(); }
+        virtual std::string getSynopsis()        { return getName(); }
         // help text describing the function of the command
-        virtual string getHelpText()        { return "Help text for " + getName() + "."; }
+        virtual std::string getHelpText()        { return "Help text for " + getName() + "."; }
         void syntaxError()
         {
-            lastStatusMessage= string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n";
-            if(getReturnType()==RT_OTHER) cout << lastStatusMessage;
+            lastStatusMessage= std::string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n";
+            if(getReturnType()==RT_OTHER) std::cout << lastStatusMessage;
         }
-        const string &getStatusMessage()    { return lastStatusMessage; }
+        const std::string &getStatusMessage()    { return lastStatusMessage; }
         virtual ReturnType getReturnType()= 0;
 
         // read a data set of node IDs.
         // expectedSize: expected size of set per line (e. g. 1 for nodes, 2 for arcs)
         // update lastErrorString and return true on success, false on failure.
-        bool readNodeset(FILE *inFile, vector< vector<uint32_t> > &dataset, unsigned expectedSize);
+        bool readNodeset(FILE *inFile, std::vector< std::vector<uint32_t> > &dataset, unsigned expectedSize);
 
     protected:
-        string lastStatusMessage;
+        std::string lastStatusMessage;
 };
 
 #endif // CLIBASE_H
