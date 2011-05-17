@@ -6,10 +6,10 @@ all: 		Release Debug
 Release:	graphcore
 Debug:		graphcore.dbg
 
-graphcore:	src/main.cpp
+graphcore:	src/main.cpp src/*.h
 		g++ $(CCFLAGS) -O3 -fexpensive-optimizations src/main.cpp $(LDFLAGS) -ographcore
 
-graphcore.dbg:	src/main.cpp
+graphcore.dbg:	src/main.cpp src/*.h
 		g++ $(CCFLAGS) -DDEBUG_COMMANDS -ggdb src/main.cpp $(LDFLAGS) -ographcore.dbg
 
 # updatelang: update the language files

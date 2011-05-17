@@ -612,12 +612,22 @@ class Digraph
 
 
 
+class CoreCliCommand: public CliCommand
+{
+    public:
+//        // read a data set of node IDs.
+//        // expectedSize: expected size of set per line (e. g. 1 for nodes, 2 for arcs)
+//        // update lastErrorString and return true on success, false on failure.
+//        bool readNodeset(FILE *inFile, std::vector< std::vector<uint32_t> > &dataset, unsigned expectedSize);
+};
+
+
 
 // base classes for cli commands. derive commands from these.
 // YourCliCommand::execute() must return the appropriate CommandStatus error code.
 
 // cli commands which do not return a data set.
-class CliCommand_RTVoid: public CliCommand
+class CliCommand_RTVoid: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_NONE; }
@@ -625,7 +635,7 @@ class CliCommand_RTVoid: public CliCommand
 };
 
 // cli commands which return a node list data set.
-class CliCommand_RTNodeList: public CliCommand
+class CliCommand_RTNodeList: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_NODE_LIST; }
@@ -634,7 +644,7 @@ class CliCommand_RTNodeList: public CliCommand
 };
 
 // cli commands which return an arc list data set.
-class CliCommand_RTArcList: public CliCommand
+class CliCommand_RTArcList: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_ARC_LIST; }
@@ -643,7 +653,7 @@ class CliCommand_RTArcList: public CliCommand
 };
 
 // cli commands which return some other data set. execute() must print the result to outFile.
-class CliCommand_RTOther: public CliCommand
+class CliCommand_RTOther: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_OTHER; }
@@ -652,26 +662,10 @@ class CliCommand_RTOther: public CliCommand
 
 
 
-class Cli
+class CoreCli: public Cli
 {
     public:
-        Cli(Digraph *g);
-
-        ~Cli()
-        {
-            for(unsigned i= 0; i<commands.size(); i++)
-                delete(commands[i]);
-            commands.clear();
-        }
-
-        CliCommand *findCommand(string name)
-        {
-            for(unsigned i= 0; i<commands.size(); i++)
-                if(commands[i]->getName()==name) return commands[i];
-            return 0;
-        }
-
-        vector<CliCommand*> &getCommands() { return commands; }
+        CoreCli(Digraph *g);
 
         // read and execute commands from stdin until eof or quit command
         void run()
@@ -720,80 +714,17 @@ class Cli
             }
         }
 
-        void quit() { doQuit= true; }
-
-        // convert string to unsigned int
-        static uint32_t parseUint(string str)
-        {
-            return strtoul(str.c_str(), 0, 0);
-        }
-
-        // check if string forms a valid unsigned integer
-        static bool isValidUint(const string& s)
-        {
-            // disallow empty strings
-            if(s.length()<1) return false;
-            // allow only positive decimal digits
-            for(size_t i= 0; i<s.length(); i++)
-                if( !isdigit(s[i]) ) return false;
-            return true;
-        }
-
-        // check if string forms a valid node (vertex) id.
-        static bool isValidNodeID(const string& s)
-        {
-            return isValidUint(s) && parseUint(s)!=0;
-        }
-
-        // parse a data record in text form, check for valid uints
-        static bool readUintRecord(FILE *f, vector<uint32_t> &ret)
-        {
-            char line[1024];
-            uint32_t n;
-            if(fgets(line, 1024, f)==0)
-            {
-                if(!feof(f)) return false;
-                else return true;
-            }
-            if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;
-            vector<string> strings= splitString(line);
-            if(strlen(line) && !strings.size())
-                // a non-empty string with no words (i. e. entirely made up of delimiters) is illegal
-                return false;
-            for(uint32_t i= 0; i<strings.size(); i++)
-            {
-                if(!isValidUint(strings[i])) return false;
-                ret.push_back(parseUint(strings[i]));
-            }
-            return true;
-        }
-
-        // like readUintRecord(), and also check that integers are in valid range for node IDs (currently 1..uint32_max)
-        static bool readNodeIDRecord(FILE *f, vector<uint32_t> &ret)
-        {
-            if(!readUintRecord(f, ret)) return false;
-            for(vector<uint32_t>::iterator i= ret.begin(); i!=ret.end(); i++)
-                if(*i==0) return false;
-            return true;
-        }
 
 
     protected:
         Digraph *myGraph;
-        bool doQuit;
-
-        vector<CliCommand*> commands;
 
         // read a line from stdin using readline if appropriate
         // return 0 on error
         char *getLine()
         {
             if(isInteractive()) return readline("> ");
-            char *linebuf= (char*)malloc(1024);
-            if(!linebuf) return 0;
-            char *l= fgets(linebuf, 1024, stdin);
-            if(!l) free(linebuf);
-            return l;
+            return Cli::getLine();
         }
 
         // execute a command
@@ -932,67 +863,8 @@ class Cli
             printf("%s %s\n", FAIL_STR, _("no such command."));
             return CMD_FAILURE;
         }
-
-        // get i/o redirection filename from command line
-        static char *getRedirFilename(char *str)
-        {
-            while(isspace(*str)) str++;
-            char *s= str;
-            while(*s && !isspace(*s)) s++;
-            *s= 0;
-            return str;
-        }
-
-        // split a string into words using given delimiters
-        static vector<string> splitString(const char *s, const char *delim= " \n\t,")
-        {
-            vector<string> ret;
-            const char *str= s;
-            while(true)
-            {
-                while(*str && strchr(delim, *str)) str++;
-                if(!*str) return ret;
-                const char *start= str;
-                while(*str && !strchr(delim, *str)) str++;
-                ret.push_back(string(start, str-start));
-                if(*str) str++;
-            }
-        }
 };
 
-
-// read a data set of node IDs.
-// expectedSize: expected size of set per line (e. g. 1 for nodes, 2 for arcs)
-// update lastErrorString and return true on success, false on failure.
-inline bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &dataset, unsigned expectedSize)
-{
-    vector<uint32_t> record;
-    bool ok= true;
-    cliSuccess("\n");
-    for(unsigned lineno= 1; ; lineno++)
-    {
-        record.clear();
-        if( !Cli::readNodeIDRecord(inFile, record) )
-        {
-            if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
-            ok= false;
-        }
-        else if(record.size()==0)
-        {
-            return ok;
-        }
-        else if(record.size()!=expectedSize)
-        {
-            if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
-            ok= false;
-        }
-        else
-        {
-            if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
-            if(ok) dataset.push_back(record);
-        }
-    }
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1601,7 +1473,7 @@ class ccMallocStats: public CliCommand_RTOther
 
 
 
-Cli::Cli(Digraph *g): myGraph(g), doQuit(false)
+CoreCli::CoreCli(Digraph *g): myGraph(g)
 {
     commands.push_back(new ccHelp(this));
     commands.push_back(new ccAddArcs());
@@ -1641,7 +1513,7 @@ int main()
     textdomain("graphcore");
 
     Digraph graph;
-    Cli cli(&graph);
+    CoreCli cli(&graph);
 
     cli.run();
 
