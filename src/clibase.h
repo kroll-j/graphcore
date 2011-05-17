@@ -1,5 +1,10 @@
+// clibase.h: cli code shared by core & server.
+// (c) Wikimedia Deutschland, written by Johannes Kroll in 2011
+
 #ifndef CLIBASE_H
 #define CLIBASE_H
+
+using namespace std;
 
 #ifndef _
 #define _(string) gettext(string)
@@ -18,6 +23,7 @@
 #define cliError(x...) cliMessage(ERROR_STR, x)
 #define cliNone(x...) cliMessage(NONE_STR, x)
 
+
 enum CommandStatus
 {
     CMD_SUCCESS= 0,
@@ -26,6 +32,13 @@ enum CommandStatus
     CMD_NONE,
 };
 
+
+enum AccessLevel
+{
+    ACCESS_READ= 0,
+    ACCESS_WRITE,
+    ACCESS_ADMIN
+};
 
 
 // abstract base class for cli commands
@@ -44,26 +57,27 @@ class CliCommand
         virtual ~CliCommand() { }
 
         // the command name
-        virtual std::string getName()            { return "CliCommand"; }
+        virtual string getName()            { return "CliCommand"; }
         // one line describing the command and its parameters
-        virtual std::string getSynopsis()        { return getName(); }
+        virtual string getSynopsis()        { return getName(); }
         // help text describing the function of the command
-        virtual std::string getHelpText()        { return "Help text for " + getName() + "."; }
+        virtual string getHelpText()        { return "Help text for " + getName() + "."; }
         void syntaxError()
         {
-            lastStatusMessage= std::string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n";
-            if(getReturnType()==RT_OTHER) std::cout << lastStatusMessage;
+            lastStatusMessage= string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n";
+            if(getReturnType()==RT_OTHER) cout << lastStatusMessage;
         }
-        const std::string &getStatusMessage()    { return lastStatusMessage; }
+        const string &getStatusMessage()    { return lastStatusMessage; }
         virtual ReturnType getReturnType()= 0;
+
         // read a data set of node IDs.
         // expectedSize: expected size of set per line (e. g. 1 for nodes, 2 for arcs)
         // update lastErrorString and return true on success, false on failure.
-        bool readNodeset(FILE *inFile, std::vector< std::vector<uint32_t> > &dataset, unsigned expectedSize);
+        bool readNodeset(FILE *inFile, vector< vector<uint32_t> > &dataset, unsigned expectedSize);
 
 
     protected:
-        std::string lastStatusMessage;
+        string lastStatusMessage;
 };
 
 
@@ -188,6 +202,25 @@ class Cli
                 ret.push_back(string(start, str-start));
                 if(*str) str++;
             }
+        }
+
+
+        // search for operator in wordlist; split command words into words/words2; place operator string in opstring.
+        // returns true if an operator was found.
+        bool splitByOperator(vector<string> &words/*INOUT*/, string &opstring/*OUT*/, vector<string> &words2/*OUT*/)
+        {
+            vector<string>::iterator op;
+            op= find(words.begin(), words.end(), "&&");
+            if(op==words.end()) op= find(words.begin(), words.end(), "&&!");
+            if(op!=words.end())
+            {
+                opstring= *op;
+                words.erase(op);
+                while(op!=words.end())
+                    words2.push_back(*op), words.erase(op);
+                return true;
+            }
+            return false;
         }
 };
 

@@ -1,5 +1,6 @@
 // Graph Processor core.
 // (c) Wikimedia Deutschland, written by Johannes Kroll in 2011
+
 #include <cstring>
 #include <cstdarg>
 #include <cstdio>
@@ -24,9 +25,8 @@
 #include <malloc.h>
 #endif
 
-using namespace std;
-
 #include "clibase.h"
+
 
 
 #ifndef _
@@ -615,10 +615,11 @@ class Digraph
 class CoreCliCommand: public CliCommand
 {
     public:
-//        // read a data set of node IDs.
-//        // expectedSize: expected size of set per line (e. g. 1 for nodes, 2 for arcs)
-//        // update lastErrorString and return true on success, false on failure.
-//        bool readNodeset(FILE *inFile, std::vector< std::vector<uint32_t> > &dataset, unsigned expectedSize);
+        string getName() { return name; }
+        void setName(string n) { name= n; }
+
+    private:
+        string name;
 };
 
 
@@ -738,17 +739,9 @@ class CoreCli: public Cli
             FILE *inFile= (inRedir? inRedir: stdin);
             CliCommand *cmd= findCommand(words[0]);
 
-            vector<string>::iterator op= find(words.begin(), words.end(), "&&");
             string opstring;
             vector<string> words2;
-            if(op==words.end()) op= find(words.begin(), words.end(), "&&!");
-            if(op!=words.end())
-            {
-                opstring= *op;
-                words.erase(op);
-                while(op!=words.end())
-                    words2.push_back(*op), words.erase(op);
-            }
+            splitByOperator(words, opstring, words2);
 
             if(cmd)
             {
@@ -874,13 +867,13 @@ template<Digraph::NodeRelation searchType, bool recursive>
     class ccListNeighbors: public CliCommand_RTNodeList
 {
     private:
-        string name;
+//        string name;
 
     public:
-        ccListNeighbors(const char *_name): name(_name)
-        { }
+//        ccListNeighbors(const char *_name): name(_name)
+//        { }
 
-        string getName()            { return name; }
+//        string getName()            { return name; }
         string getSynopsis()        { return getName() + _(" NODE") + (recursive? _(" DEPTH"): ""); }
         string getHelpText()
         {
@@ -940,13 +933,13 @@ template<bool leaves>
     class ccListNeighborless: public CliCommand_RTNodeList
 {
     private:
-        string name;
+//        string name;
 
     public:
-        ccListNeighborless(const char *_name): name(_name)
-        { }
+//        ccListNeighborless(const char *_name): name(_name)
+//        { }
 
-        string getName()            { return name; }
+//        string getName()            { return name; }
         string getSynopsis()        { return getName(); }
         string getHelpText()
         {
@@ -985,7 +978,7 @@ class ccHelp: public CliCommand_RTOther
         ccHelp(Cli *_cli): cli(_cli)
         { }
 
-        string getName()            { return "help"; }
+//        string getName()            { return "help"; }
         string getSynopsis()        { return getName() + _(" [COMMAND] / ") + getName() + _(" operators"); }
         string getHelpText()        { return _("help: list commands\n# help COMMAND: get help on COMMAND\n# help operators: print help on operators"); }
 
@@ -1058,7 +1051,7 @@ class ccHelp: public CliCommand_RTOther
 class ccStats: public CliCommand_RTOther
 {
     public:
-        string getName()            { return "stats"; }
+//        string getName()            { return "stats"; }
         string getSynopsis()        { return getName(); }
         string getHelpText()
         {
@@ -1097,7 +1090,7 @@ class ccStats: public CliCommand_RTOther
 class ccAddArcs: public CliCommand_RTVoid
 {
     public:
-        string getName()            { return "add-arcs"; }
+//        string getName()            { return "add-arcs"; }
         string getSynopsis()        { return getName() + " {:|<}"; }
         string getHelpText()        { return _("read a data set of arcs and add them to the graph. empty line terminates the set."); }
 
@@ -1160,7 +1153,7 @@ class ccAddArcs: public CliCommand_RTVoid
 class ccRemoveArcs: public CliCommand_RTVoid
 {
     public:
-        string getName()            { return "remove-arcs"; }
+//        string getName()            { return "remove-arcs"; }
         string getSynopsis()        { return getName() + " {:|<}"; }
         string getHelpText()        { return _("read a data set of arcs and remove them from the graph. empty line terminates the set."); }
 
@@ -1192,13 +1185,13 @@ template<Digraph::NodeRelation searchType>
     class ccReplaceNeighbors: public CliCommand_RTVoid
 {
     private:
-        string name;
+//        string name;
 
     public:
-        ccReplaceNeighbors(const char *_name): name(_name)
-        { }
+//        ccReplaceNeighbors(const char *_name): name(_name)
+//        { }
 
-        string getName()            { return name; }
+//        string getName()            { return name; }
         string getSynopsis()        { return getName() + _(" NODE") + " {:|<}"; }
         string getHelpText()
         {
@@ -1248,7 +1241,7 @@ template<Digraph::NodeRelation searchType>
 class ccClear: public CliCommand_RTVoid
 {
     public:
-        string getName()            { return "clear"; }
+//        string getName()            { return "clear"; }
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("clear the graph model."); }
 
@@ -1272,13 +1265,13 @@ class ccClear: public CliCommand_RTVoid
 class ccShutdown: public CliCommand_RTVoid
 {
     private:
-        string name;
+//        string name;
 
     public:
-        ccShutdown(const char *_name= "shutdown"): name(_name)
-        { }
+//        ccShutdown(const char *_name= "shutdown"): name(_name)
+//        { }
 
-        string getName()            { return name; }
+//        string getName()            { return name; }
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("shutdown the graph processor."); }
 
@@ -1302,13 +1295,13 @@ class ccShutdown: public CliCommand_RTVoid
 template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
 {
     private:
-        string name;
+//        string name;
 
     public:
-        ccFindPath(const char *_name): name(_name)
-        { }
+//        ccFindPath(const char *_name): name(_name)
+//        { }
 
-        string getName()            { return name; }
+//        string getName()            { return name; }
         string getSynopsis()        { return getName() + (findRoot? " X": " X Y"); }
         string getHelpText()
         {
@@ -1366,7 +1359,7 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
 template<bool byHead> class ccListArcs: public CliCommand_RTOther
 {
     public:
-        string getName()            { return byHead? "list-by-head": "list-by-tail"; }
+//        string getName()            { return byHead? "list-by-head": "list-by-tail"; }
         string getSynopsis()        { return getName() + " INDEX [N]"; }
         string getHelpText()
         {
@@ -1400,7 +1393,7 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
 class ccAddStuff: public CliCommand_RTOther
 {
     public:
-        string getName()            { return "add-stuff"; }
+//        string getName()            { return "add-stuff"; }
         string getSynopsis()        { return getName(); }
         string getHelpText()
         {
@@ -1440,7 +1433,7 @@ class ccAddStuff: public CliCommand_RTOther
 class ccMallocStats: public CliCommand_RTOther
 {
     public:
-        string getName()            { return "malloc-stats"; }
+//        string getName()            { return "malloc-stats"; }
         string getSynopsis()        { return getName(); }
         string getHelpText()
         {
@@ -1471,37 +1464,17 @@ class ccMallocStats: public CliCommand_RTOther
 
 #endif // DEBUG_COMMANDS
 
-
-
 CoreCli::CoreCli(Digraph *g): myGraph(g)
 {
-    commands.push_back(new ccHelp(this));
-    commands.push_back(new ccAddArcs());
-    commands.push_back(new ccRemoveArcs());
-    commands.push_back(new ccReplaceNeighbors<Digraph::PREDECESSORS>("replace-predecessors"));
-    commands.push_back(new ccReplaceNeighbors<Digraph::DESCENDANTS>("replace-successors"));
-    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, true>("traverse-predecessors"));
-    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, true>("traverse-successors"));
-    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, true>("traverse-neighbors"));
-    commands.push_back(new ccListNeighbors<Digraph::PREDECESSORS, false>("list-predecessors"));
-    commands.push_back(new ccListNeighbors<Digraph::DESCENDANTS, false>("list-successors"));
-//    commands.push_back(new ccListNeighbors<Digraph::NEIGHBORS, false>("list-neighbors-nonrecursive"));
-    commands.push_back(new ccFindPath<false>("find-path"));
-    commands.push_back(new ccFindPath<true>("find-root"));
-    commands.push_back(new ccListNeighborless<false>("list-roots"));
-    commands.push_back(new ccListNeighborless<true>("list-leaves"));
-    commands.push_back(new ccStats());
+#define CORECOMMANDS_BEGIN
+#define CORECOMMANDS_END
+#define CORECOMMAND(name, level, coreImp...)    ({ \
+    CoreCliCommand *cmd= new coreImp;   \
+    cmd->setName(name);                 \
+    commands.push_back(cmd);            \
+    })
 
-#ifdef DEBUG_COMMANDS
-    commands.push_back(new ccListArcs<false>());
-    commands.push_back(new ccListArcs<true>());
-    commands.push_back(new ccAddStuff());
-    commands.push_back(new ccMallocStats());
-#endif
-
-    commands.push_back(new ccClear());
-    commands.push_back(new ccShutdown());
-    commands.push_back(new ccShutdown("quit"));
+#include "corecommands.h"
 }
 
 

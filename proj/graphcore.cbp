@@ -41,6 +41,7 @@
 			<Add library="readline" />
 		</Linker>
 		<Unit filename="../src/clibase.h" />
+		<Unit filename="../src/corecommands.h" />
 		<Unit filename="../src/main.cpp" />
 		<Extensions>
 			<code_completion />
