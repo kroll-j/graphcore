@@ -632,7 +632,7 @@ class CliCommand_RTVoid: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_NONE; }
-        virtual CommandStatus execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)= 0;
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)= 0;
 };
 
 // cli commands which return a node list data set.
@@ -640,7 +640,7 @@ class CliCommand_RTNodeList: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_NODE_LIST; }
-        virtual CommandStatus execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                              vector<uint32_t> &result)= 0;
 };
 
@@ -649,7 +649,7 @@ class CliCommand_RTArcList: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_ARC_LIST; }
-        virtual CommandStatus execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                                       vector<Digraph::arc> &result)= 0;
 };
 
@@ -658,7 +658,7 @@ class CliCommand_RTOther: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_OTHER; }
-        virtual CommandStatus execute(vector<string> words, class Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)= 0;
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)= 0;
 };
 
 
@@ -715,10 +715,14 @@ class CoreCli: public Cli
             }
         }
 
+        void quit() { doQuit= true; }
+
 
 
     protected:
         Digraph *myGraph;
+
+        bool doQuit;
 
         // read a line from stdin using readline if appropriate
         // return 0 on error
@@ -884,7 +888,7 @@ template<Digraph::NodeRelation searchType, bool recursive>
             }
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                      vector<uint32_t> &result)
         {
             if( (words.size()!=(recursive? 3: 2)) || hasDataSet ||
@@ -935,7 +939,7 @@ template<bool leaves>
                 return _("list root nodes (nodes without predecessors).");
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                      vector<uint32_t> &result)
         {
             if( words.size()!=1 || hasDataSet )
@@ -958,16 +962,16 @@ template<bool leaves>
 class ccHelp: public CliCommand_RTOther
 {
     private:
-        Cli *cli;
+        CoreCli *cli;
 
     public:
-        ccHelp(Cli *_cli): cli(_cli)
+        ccHelp(CoreCli *_cli): cli(_cli)
         { }
 
         string getSynopsis()        { return getName() + _(" [COMMAND] / ") + getName() + _(" operators"); }
         string getHelpText()        { return _("help: list commands\n# help COMMAND: get help on COMMAND\n# help operators: print help on operators"); }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if(words.size()>2 || hasDataSet)
             {
@@ -1049,7 +1053,7 @@ class ccStats: public CliCommand_RTOther
             return s;
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if(words.size()!=1 || hasDataSet)
             {
@@ -1077,7 +1081,7 @@ class ccAddArcs: public CliCommand_RTVoid
         string getSynopsis()        { return getName() + " {:|<}"; }
         string getHelpText()        { return _("read a data set of arcs and add them to the graph. empty line terminates the set."); }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
             if(words.size()!=1 || !(hasDataSet||(inFile!=stdin)))
             {
@@ -1139,7 +1143,7 @@ class ccRemoveArcs: public CliCommand_RTVoid
         string getSynopsis()        { return getName() + " {:|<}"; }
         string getHelpText()        { return _("read a data set of arcs and remove them from the graph. empty line terminates the set."); }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=1 || !(hasDataSet||(inFile!=stdin)) )
             {
@@ -1178,7 +1182,7 @@ template<Digraph::NodeRelation searchType>
             }
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=2 || !(hasDataSet||(inFile!=stdin)) ||
                 !Cli::isValidNodeID(words[1]) )
@@ -1219,7 +1223,7 @@ class ccClear: public CliCommand_RTVoid
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("clear the graph model."); }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=1 || hasDataSet || (inFile!=stdin) )
             {
@@ -1242,7 +1246,7 @@ class ccShutdown: public CliCommand_RTVoid
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("shutdown the graph processor."); }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
             if(words.size()!=1 || hasDataSet || (inFile!=stdin))
             {
@@ -1271,7 +1275,7 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                 return _("find the shortest path from node X to node Y. return data set of arcs representing the path.");
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, vector<Digraph::arc> &result)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, vector<Digraph::arc> &result)
         {
             if( hasDataSet ||
                 (findRoot? (words.size()!=2):
@@ -1305,7 +1309,8 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                            outFile==stdout? ":": "");
                 return CMD_SUCCESS;
             }
-            lastStatusMessage= "NONE.\n";
+//            lastStatusMessage= NONE_STR "\n";
+            cliNone("\n");
             return CMD_NONE;
         }
 };
@@ -1325,7 +1330,7 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
             return _("debugging: list N arcs starting from INDEX, ") + string(byHead? "sorted by head": "sorted by tail");
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if( hasDataSet ||
                 (words.size()==3 && !Cli::isValidUint(words[2])) ||
@@ -1358,7 +1363,7 @@ class ccAddStuff: public CliCommand_RTOther
             return _("debugging");
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if( hasDataSet ||
                 (words.size()==3 && !Cli::isValidUint(words[2])) ||
@@ -1397,7 +1402,7 @@ class ccMallocStats: public CliCommand_RTOther
             return _("debugging");
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if( hasDataSet || words.size()!=1 )
             {
@@ -1434,7 +1439,7 @@ class ccProtocolVersion: public CliCommand_RTVoid
             return _("print PROTOCOL_VERSION. for internal use only.");
         }
 
-        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( hasDataSet ||
                 words.size()!=1 )
@@ -1452,7 +1457,7 @@ class ccProtocolVersion: public CliCommand_RTVoid
 
 
 
-CoreCli::CoreCli(Digraph *g): myGraph(g)
+CoreCli::CoreCli(Digraph *g): myGraph(g), doQuit(false)
 {
 #define CORECOMMANDS_BEGIN
 #define CORECOMMANDS_END
@@ -1481,4 +1486,5 @@ int main()
     cli.run();
 
     return 0;
+
 }

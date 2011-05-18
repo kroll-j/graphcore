@@ -10,6 +10,8 @@ using namespace std;
 #define _(string) gettext(string)
 #endif
 
+#define _stringize(x) #x
+#define stringify(x) _stringize(x)
 
 // convenience macros for printing success/failure/error messages from the cli.
 // if the protocol for those messages should ever have to be modified, change these.
@@ -26,25 +28,15 @@ using namespace std;
 
 #define PROTOCOL_VERSION    zilch
 
-#define _stringize(x) #x
-#define stringify(x) _stringize(x)
-
 
 enum CommandStatus
 {
-    CMD_SUCCESS= 0,
-    CMD_FAILURE,
-    CMD_ERROR,
-    CMD_NONE,
+    CMD_SUCCESS= 0,     // command succeeded
+    CMD_FAILURE,        // command failed, graph did not change
+    CMD_ERROR,          // command failed, graph may have changed
+    CMD_NONE,           // command succeeded, but no answer to query was found
 };
 
-
-enum AccessLevel
-{
-    ACCESS_READ= 0,
-    ACCESS_WRITE,
-    ACCESS_ADMIN
-};
 
 
 
@@ -104,7 +96,7 @@ class CliCommand
 class Cli
 {
     public:
-        Cli(): doQuit(false) {}
+        Cli() {}
 
         ~Cli()
         {
@@ -121,8 +113,6 @@ class Cli
         }
 
         vector<CliCommand*> &getCommands() { return commands; }
-
-        void quit() { doQuit= true; }
 
         // convert string to unsigned int
         static uint32_t parseUint(string str)
@@ -181,8 +171,6 @@ class Cli
 
 
     protected:
-        bool doQuit;
-
         vector<CliCommand*> commands;
 
         // read a line from stdin.
