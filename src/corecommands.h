@@ -19,7 +19,6 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("traverse-neighbors",   ACCESS_READ,    ccListNeighbors<Digraph::NEIGHBORS, true>());
     CORECOMMAND("list-predecessors",    ACCESS_READ,    ccListNeighbors<Digraph::PREDECESSORS, false>());
     CORECOMMAND("list-successors",      ACCESS_READ,    ccListNeighbors<Digraph::DESCENDANTS, false>());
-//  CORECOMMAND("list-neighbors-nonrecursive", ACCESS_READ, ccListNeighbors<Digraph::NEIGHBORS, false>("list-neighbors-nonrecursive"));
     CORECOMMAND("find-path",            ACCESS_READ,    ccFindPath<false>());
     CORECOMMAND("find-root",            ACCESS_READ,    ccFindPath<true>());
     CORECOMMAND("list-roots",           ACCESS_READ,    ccListNeighborless<false>());
@@ -36,6 +35,8 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("clear",                ACCESS_WRITE,   ccClear());
     CORECOMMAND("shutdown",             ACCESS_ADMIN,   ccShutdown());
     CORECOMMAND("quit",                 ACCESS_ADMIN,   ccShutdown());
+
+    CORECOMMAND("protocol-version",     ACCESS_ADMIN,   ccProtocolVersion());
 CORECOMMANDS_END
 
 

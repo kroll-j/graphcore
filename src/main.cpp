@@ -1421,6 +1421,37 @@ class ccMallocStats: public CliCommand_RTOther
 
 #endif // DEBUG_COMMANDS
 
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccProtocolVersion
+// print PROTOCOL_VERSION. for internal use only.
+class ccProtocolVersion: public CliCommand_RTVoid
+{
+    public:
+        string getSynopsis()        { return getName(); }
+        string getHelpText()
+        {
+            return _("print PROTOCOL_VERSION. for internal use only.");
+        }
+
+        CommandStatus execute(vector<string> words, Cli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if( hasDataSet ||
+                words.size()!=1 )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            cliSuccess(stringify(PROTOCOL_VERSION) "\n");
+
+            return CMD_SUCCESS;
+        }
+};
+
+
+
+
 CoreCli::CoreCli(Digraph *g): myGraph(g)
 {
 #define CORECOMMANDS_BEGIN

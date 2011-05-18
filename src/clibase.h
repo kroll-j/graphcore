@@ -24,6 +24,12 @@ using namespace std;
 #define cliNone(x...) cliMessage(NONE_STR, x)
 
 
+#define PROTOCOL_VERSION    zilch
+
+#define _stringize(x) #x
+#define stringify(x) _stringize(x)
+
+
 enum CommandStatus
 {
     CMD_SUCCESS= 0,
@@ -40,6 +46,19 @@ enum AccessLevel
     ACCESS_ADMIN
 };
 
+
+
+inline void chomp(char *line) { int n= strlen(line); if(n && line[n-1]=='\n') line[n-1]= 0; }
+
+inline std::string format(const char *fmt, ...)
+{
+    char c[2048];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(c, sizeof(c), fmt, ap);
+    va_end(ap);
+    return string(c);
+}
 
 // abstract base class for cli commands
 class CliCommand
