@@ -73,7 +73,7 @@ class CliCommand
         virtual string getSynopsis()        { return getName(); }
         // help text describing the function of the command
         virtual string getHelpText()        { return "Help text for " + getName() + "."; }
-        void syntaxError()
+        virtual void syntaxError()
         {
             lastStatusMessage= string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n";
             if(getReturnType()==RT_OTHER) cout << lastStatusMessage;
