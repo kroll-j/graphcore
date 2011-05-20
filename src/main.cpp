@@ -617,6 +617,11 @@ class CoreCliCommand: public CliCommand
     public:
         string getName() { return name; }
         void setName(string n) { name= n; }
+        void syntaxError()
+        {
+            CliCommand::syntaxError();
+            if(getReturnType()==RT_OTHER) cout << lastStatusMessage;
+        }
 
     private:
         string name;

@@ -76,7 +76,6 @@ class CliCommand
         virtual void syntaxError()
         {
             lastStatusMessage= string(FAIL_STR) + _(" Syntax: ") + getSynopsis() + "\n";
-            if(getReturnType()==RT_OTHER) cout << lastStatusMessage;
         }
         const string &getStatusMessage()    { return lastStatusMessage; }
         virtual ReturnType getReturnType()= 0;
