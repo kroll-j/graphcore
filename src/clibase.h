@@ -168,6 +168,23 @@ class Cli
             return true;
         }
 
+        // split a string into words using given delimiters
+        static vector<string> splitString(const char *s, const char *delim= " \n\t,")
+        {
+            vector<string> ret;
+            const char *str= s;
+            while(true)
+            {
+                while(*str && strchr(delim, *str)) str++;
+                if(!*str) return ret;
+                const char *start= str;
+                while(*str && !strchr(delim, *str)) str++;
+                ret.push_back(string(start, str-start));
+                if(*str) str++;
+            }
+        }
+
+
 
     protected:
         vector<CliCommand*> commands;
@@ -193,23 +210,6 @@ class Cli
             *s= 0;
             return str;
         }
-
-        // split a string into words using given delimiters
-        static vector<string> splitString(const char *s, const char *delim= " \n\t,")
-        {
-            vector<string> ret;
-            const char *str= s;
-            while(true)
-            {
-                while(*str && strchr(delim, *str)) str++;
-                if(!*str) return ret;
-                const char *start= str;
-                while(*str && !strchr(delim, *str)) str++;
-                ret.push_back(string(start, str-start));
-                if(*str) str++;
-            }
-        }
-
 
         // search for operator in wordlist; split command words into words/words2; place operator string in opstring.
         // returns true if an operator was found.
