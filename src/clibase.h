@@ -26,7 +26,7 @@ using namespace std;
 #define cliNone(x...) cliMessage(NONE_STR, x)
 
 
-#define PROTOCOL_VERSION    zilch
+#define PROTOCOL_VERSION    1
 
 
 enum CommandStatus
@@ -35,6 +35,7 @@ enum CommandStatus
     CMD_FAILURE,        // command failed, graph did not change
     CMD_ERROR,          // command failed, graph may have changed
     CMD_NONE,           // command succeeded, but no answer to query was found
+    CMD_ACCESSDENIED,   // insufficient access level for command (only used in the server)
 };
 
 
