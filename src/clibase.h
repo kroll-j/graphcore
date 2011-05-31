@@ -19,6 +19,7 @@ using namespace std;
 #define FAIL_STR "FAILED!"
 #define ERROR_STR "ERROR!"
 #define NONE_STR "NONE."
+#define DENIED_STR "DENIED!"
 #define cliMessage(str, x...) ({ char c[2048]; int n= sprintf(c, str " "); snprintf(c+n, sizeof(c)-n, x); lastStatusMessage= c; })
 #define cliSuccess(x...) cliMessage(SUCCESS_STR, x)
 #define cliFailure(x...) cliMessage(FAIL_STR, x)
