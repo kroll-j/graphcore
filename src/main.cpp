@@ -27,6 +27,10 @@
 
 #include "clibase.h"
 
+enum CommandStatus
+{
+    CORECMDSTATUSCODES
+};
 
 
 #ifndef _

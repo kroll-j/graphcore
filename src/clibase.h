@@ -19,28 +19,28 @@ using namespace std;
 #define FAIL_STR "FAILED!"
 #define ERROR_STR "ERROR!"
 #define NONE_STR "NONE."
-#define DENIED_STR "DENIED!"
+#define DENIED_STR "DENIED!"    // only used in server.
 #define cliMessage(str, x...) ({ char c[2048]; int n= sprintf(c, str " "); snprintf(c+n, sizeof(c)-n, x); lastStatusMessage= c; })
 #define cliSuccess(x...) cliMessage(SUCCESS_STR, x)
 #define cliFailure(x...) cliMessage(FAIL_STR, x)
 #define cliError(x...) cliMessage(ERROR_STR, x)
 #define cliNone(x...) cliMessage(NONE_STR, x)
 
-
+// bump this up if any part of the protocol between graphcore and graphserv changes.
 #define PROTOCOL_VERSION    1
 
+// list of core command status codes.
+// server and core include these in an enum.
+#define CORECMDSTATUSCODES                                              \
+    CMD_SUCCESS,        /* command succeeded */                         \
+    CMD_FAILURE,        /* command failed, graph did not change */      \
+    CMD_ERROR,          /* command failed, graph may have changed */    \
+    CMD_NONE            /* command succeeded, but no answer to query was found */
 
-enum CommandStatus
-{
-    CMD_SUCCESS= 0,     // command succeeded
-    CMD_FAILURE,        // command failed, graph did not change
-    CMD_ERROR,          // command failed, graph may have changed
-    CMD_NONE,           // command succeeded, but no answer to query was found
-    CMD_ACCESSDENIED,   // insufficient access level for command (only used in the server)
-};
-
-
-
+// list of all core command status strings, in the same order as the codes above.
+// needed for translation to and from integer status codes.
+#define CORECMDSTATUSSTRINGS  \
+        SUCCESS_STR, FAIL_STR, ERROR_STR, NONE_STR
 
 inline void chomp(char *line) { int n= strlen(line); if(n && line[n-1]=='\n') line[n-1]= 0; }
 
