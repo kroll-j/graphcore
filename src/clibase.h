@@ -99,7 +99,7 @@ class Cli
     public:
         Cli() {}
 
-        ~Cli()
+        virtual ~Cli()
         {
             for(unsigned i= 0; i<commands.size(); i++)
                 delete(commands[i]);
