@@ -27,7 +27,7 @@ using namespace std;
 #define cliNone(x...) cliMessage(NONE_STR, x)
 
 // bump this up if any part of the protocol between graphcore and graphserv changes.
-#define PROTOCOL_VERSION    1
+#define PROTOCOL_VERSION    2
 
 // list of core command status codes.
 // server and core include these in an enum.

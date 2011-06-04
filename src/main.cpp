@@ -978,7 +978,9 @@ class ccHelp: public CliCommand_RTOther
         { }
 
         string getSynopsis()        { return getName() + _(" [COMMAND] / ") + getName() + _(" operators"); }
-        string getHelpText()        { return _("help: list commands\n# help COMMAND: get help on COMMAND\n# help operators: print help on operators"); }
+        string getHelpText()        { return getName() + _(": list commands") + "\n# " +
+                                             getName() + _(" COMMAND: get help on COMMAND") + "\n# " +
+                                             getName() + _(" operators: print help on operators"); }
 
         CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
