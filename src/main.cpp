@@ -1022,7 +1022,7 @@ class ccHelp: public CliCommand_RTOther
                 CliCommand *cmd= cli->findCommand(words[1]);
                 if(!cmd)
                 {
-                    cliFailure(_("%s: no such command.\n"), words[1].c_str());
+                    cliFailure(_("%s: no such command."), words[1].c_str());
                     cout << lastStatusMessage << endl;
                     return CMD_FAILURE;
                 }
