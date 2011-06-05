@@ -1016,7 +1016,7 @@ class ccHelp: public CliCommand_RTOther
 # The subtraction operator takes two operants, both of\n\
 # which must return a set of nodes. The result of the composite command is\n\
 # a set of nodes that contains only the nodes that are in the result of\n\
-# the left operand but not inthe result of the right operant. If and only\n\
+# the left operand but not in the result of the right operant. If and only\n\
 # if the left operant returns NONE, the result is NONE. If the right\n\
 # operant returns NONE, the result is the result of the left operant.\n\n");
                     return CMD_SUCCESS;

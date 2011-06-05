@@ -10,7 +10,6 @@
 
 CORECOMMANDS_BEGIN
     CORECOMMAND("help",                 ACCESS_READ,    ccHelp(this));
-    CORECOMMAND("corehelp",             ACCESS_READ,    ccHelp(this));
     CORECOMMAND("add-arcs",             ACCESS_WRITE,   ccAddArcs());
     CORECOMMAND("remove-arcs",          ACCESS_WRITE,   ccRemoveArcs());
     CORECOMMAND("replace-predecessors", ACCESS_WRITE,   ccReplaceNeighbors<Digraph::PREDECESSORS>());
