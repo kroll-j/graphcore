@@ -48,10 +48,10 @@ double getTime()
     return tv.tv_sec + tv.tv_usec*0.000001;
 }
 
-// test if stdout refers to tty
+// check whether we are running interactive or not. interactive mode uses readline.
 bool isInteractive()
 {
-    return isatty(STDOUT_FILENO);
+    return isatty(STDOUT_FILENO) && isatty(STDIN_FILENO);
 }
 
 
@@ -737,7 +737,7 @@ class CoreCli: public Cli
         // return 0 on error
         char *getLine()
         {
-            if(isInteractive()) return readline("> ");
+            if(isInteractive()) return filterNewlines(readline("> "));
             return Cli::getLine();
         }
 
