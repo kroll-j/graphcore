@@ -148,6 +148,7 @@ class Cli
                 if(!feof(f)) return false;
                 else return true;
             }
+            filterNewlines(line);    // filter out any CRLFs
             if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;    // chomp line buffer.
             vector<string> strings= splitString(line);
             if(strlen(line) && !strings.size())
@@ -191,6 +192,18 @@ class Cli
     protected:
         vector<CliCommand*> commands;
 
+        // convert crlf newlines to lf.
+        static char *filterNewlines(char *line)
+        {
+            if(!line) return 0;
+            int i= 0, di= 0;
+            do {
+                line[di]= line[i];
+                if(line[i]!='\r') di++;
+            } while(line[i++]);
+            return line;
+        }
+
         // read a line from stdin.
         // return 0 on error
         virtual char *getLine()
@@ -198,8 +211,8 @@ class Cli
             char *linebuf= (char*)malloc(1024);
             if(!linebuf) return 0;
             char *l= fgets(linebuf, 1024, stdin);
-            if(!l) free(linebuf);
-            return l;
+            if(!l) { free(linebuf); return 0; }
+            return filterNewlines(linebuf);
         }
 
 
