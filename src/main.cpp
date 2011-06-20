@@ -1353,7 +1353,7 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
             }
 
             // no i/o redirection for this debug command.
-            puts(SUCCESS_STR);
+            puts(SUCCESS_STR " :");
 
             uint32_t start= Cli::parseUint(words[1]),
                      end= (words.size()==3? start+Cli::parseUint(words[2]): graph->size());
