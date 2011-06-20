@@ -584,6 +584,7 @@ class Digraph
 
         struct sorterThreadArg
         {
+            arcContainer *arcs;
             arcContainer::iterator begin, mergeBegin, end;
             bool (*compFunc)(arc a, arc b);
         };
@@ -591,24 +592,36 @@ class Digraph
         static void *sorterThread(void *a)
         {
             sorterThreadArg *arg= (sorterThreadArg*)a;
-            doMerge(arg->begin, arg->mergeBegin, arg->end, arg->compFunc);
+            doMerge(arg->arcs, arg->begin, arg->mergeBegin, arg->end, arg->compFunc);
             return 0;
         }
         // re-sort arcs in 2 threads
         void threadedSort(int mergeBegin)
         {
             pthread_t threadID;
-            sorterThreadArg arg= { arcsByHead.begin(), arcsByHead.begin()+mergeBegin, arcsByHead.end(), compByHead };
+            sorterThreadArg arg= { &arcsByHead, arcsByHead.begin(), arcsByHead.begin()+mergeBegin, arcsByHead.end(), compByHead };
             pthread_create(&threadID, 0, sorterThread, &arg);
-            doMerge(arcsByTail.begin(), arcsByTail.begin()+mergeBegin, arcsByTail.end(), compByTail);
+            doMerge(&arcsByTail, arcsByTail.begin(), arcsByTail.begin()+mergeBegin, arcsByTail.end(), compByTail);
             pthread_join(threadID, 0);
         }
 
         // helper function: merge & resort
-        static void doMerge(arcContainer::iterator begin, arcContainer::iterator mergeBegin, arcContainer::iterator end,
+        static void doMerge(arcContainer *arcs, arcContainer::iterator begin, arcContainer::iterator mergeBegin, arcContainer::iterator end,
                             bool (*compFunc)(arc a, arc b))
         {
             stable_sort(mergeBegin, end, compFunc);
+#if 1
+            unsigned numDups= 0;
+            for(arcContainer::iterator it= mergeBegin; it<end-1; it++)
+                if( *it == *(it+1) )
+                {
+                    arcs->erase(it);
+                    it--;
+                    end--;
+                    numDups++;
+                }
+            if(numDups) arcs->resize(arcs->size()-numDups);
+#endif
             inplace_merge(begin, mergeBegin, end, compFunc);
         }
 };
@@ -1078,6 +1091,7 @@ class ccStats: public CliCommand_RTOther
             for(map<string, Digraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
                 fprintf(outFile, "%s,%zu\n", i->first.c_str(), i->second.value);
             fprintf(outFile, "\n");
+            fflush(outFile);
             return CMD_SUCCESS;
         }
 };
@@ -1359,6 +1373,9 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
                      end= (words.size()==3? start+Cli::parseUint(words[2]): graph->size());
             if(byHead) graph->listArcsByHead(start, end);
             else graph->listArcsByTail(start, end);
+
+            puts("");
+            fflush(stdout);
 
             return CMD_SUCCESS;
         }
