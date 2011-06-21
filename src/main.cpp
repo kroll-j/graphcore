@@ -87,7 +87,7 @@ class Digraph
         void addArc(arc a, bool doSort= true)
         {
             arcContainer::iterator lb= lower_bound(arcsByHead.begin(), arcsByHead.begin()+sortedSize, a, compByHead);
-            if(lb!=arcsByHead.end() && *lb==a) { return; }
+            if(lb!=arcsByHead.begin()+sortedSize && *lb==a) return;
             arcsByHead.push_back(a);
             arcsByTail.push_back(a);
             if(doSort) resort(arcsByHead.size()-1);
@@ -266,12 +266,16 @@ class Digraph
         {
             arcContainer::iterator it;
             arc value= arc(tail, head);
-            if( (it= lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead))!=arcsByHead.end() &&
-                    *it==value )
-                arcsByHead.erase(it);
-            if( (it= lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail))!=arcsByTail.end() &&
-                    *it==value )
-                arcsByTail.erase(it);
+
+            it= lower_bound(arcsByHead.begin(), arcsByHead.begin()+sortedSize, value, compByHead);
+            if( it!=arcsByHead.begin()+sortedSize && *it==value )
+                arcsByHead.erase(it),
+                sortedSize--;
+
+            it= lower_bound(arcsByTail.begin(), arcsByTail.begin()+sortedSize, value, compByTail);
+            if( it!=arcsByTail.begin()+sortedSize && *it==value )
+                arcsByTail.erase(it),
+                sortedSize--;
         }
 
         // replace predecessors (successors=false) or descendants (successors=true) of a node
