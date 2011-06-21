@@ -74,7 +74,7 @@ class Digraph
             }
         };
 
-        Digraph()
+        Digraph(): sortedSize(0)
         {
         }
 
@@ -86,7 +86,7 @@ class Digraph
         // add an arc to the graph
         void addArc(arc a, bool doSort= true)
         {
-            arcContainer::iterator lb= lower_bound(arcsByHead.begin(), arcsByHead.end(), a, compByHead);
+            arcContainer::iterator lb= lower_bound(arcsByHead.begin(), arcsByHead.begin()+sortedSize, a, compByHead);
             if(lb!=arcsByHead.end() && *lb==a) { return; }
             arcsByHead.push_back(a);
             arcsByTail.push_back(a);
@@ -110,6 +110,7 @@ class Digraph
         void resort(uint32_t begin= 0)
         {
             threadedSort(begin);
+            sortedSize= size();
         }
 
         // return number of arcs in graph
@@ -428,14 +429,14 @@ class Digraph
         void listArcsByHead(uint32_t start, uint32_t end, FILE *outFile= stdout)
         {
             for(uint32_t i= start; i<end && i<arcsByHead.size(); i++)
-                fprintf(outFile, "%d -> %d\n", arcsByHead[i].tail, arcsByHead[i].head);
+                fprintf(outFile, "%d, %d\n", arcsByHead[i].tail, arcsByHead[i].head);
         }
 
         // list arcs by index sorted by tail
         void listArcsByTail(uint32_t start, uint32_t end, FILE *outFile= stdout)
         {
             for(uint32_t i= start; i<end && i<arcsByTail.size(); i++)
-                fprintf(outFile, "%d -> %d\n", arcsByTail[i].tail, arcsByTail[i].head);
+                fprintf(outFile, "%d, %d\n", arcsByTail[i].tail, arcsByTail[i].head);
         }
 
 
@@ -443,6 +444,8 @@ class Digraph
         typedef deque< arc > arcContainer;
 //        typedef vector< arc > arcContainer;
         arcContainer arcsByTail, arcsByHead;
+
+        uint32_t sortedSize;
 
         // helper class for iterating over all predecessors/successors (or both) of a node
         class NeighborIterator
@@ -584,8 +587,8 @@ class Digraph
 
         struct sorterThreadArg
         {
-            arcContainer *arcs;
-            arcContainer::iterator begin, mergeBegin, end;
+            arcContainer& arcs;
+            int begin, mergeBegin, end;
             bool (*compFunc)(arc a, arc b);
         };
         // thread function for sorting
@@ -599,30 +602,31 @@ class Digraph
         void threadedSort(int mergeBegin)
         {
             pthread_t threadID;
-            sorterThreadArg arg= { &arcsByHead, arcsByHead.begin(), arcsByHead.begin()+mergeBegin, arcsByHead.end(), compByHead };
+            sorterThreadArg arg= { arcsByHead, 0, mergeBegin, arcsByHead.size(), compByHead };
             pthread_create(&threadID, 0, sorterThread, &arg);
-            doMerge(&arcsByTail, arcsByTail.begin(), arcsByTail.begin()+mergeBegin, arcsByTail.end(), compByTail);
+            doMerge(arcsByTail, 0, mergeBegin, arcsByTail.size(), compByTail);
             pthread_join(threadID, 0);
         }
 
         // helper function: merge & resort
-        static void doMerge(arcContainer *arcs, arcContainer::iterator begin, arcContainer::iterator mergeBegin, arcContainer::iterator end,
+        static void doMerge(arcContainer &arcs, int begin, int mergeBegin, int end,
                             bool (*compFunc)(arc a, arc b))
         {
-            stable_sort(mergeBegin, end, compFunc);
+            stable_sort(arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
 #if 1
             unsigned numDups= 0;
-            for(arcContainer::iterator it= mergeBegin; it<end-1; it++)
-                if( *it == *(it+1) )
+            for(int i= mergeBegin; i<end-1; i++)
+                if( arcs[i] == arcs[i+1] )
                 {
-                    arcs->erase(it);
-                    it--;
+                    arcs.erase(arcs.begin()+i);
+                    i--;
                     end--;
                     numDups++;
                 }
-            if(numDups) arcs->resize(arcs->size()-numDups);
+//            if(numDups)
+//                printf("%d dups in set, begin=%d mergeBegin=%d end=%d size()=%zu\n", numDups, begin, mergeBegin, end, arcs.size());
 #endif
-            inplace_merge(begin, mergeBegin, end, compFunc);
+            inplace_merge(arcs.begin()+begin, arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
         }
 };
 
@@ -1334,7 +1338,6 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                            outFile==stdout? ":": "");
                 return CMD_SUCCESS;
             }
-//            lastStatusMessage= NONE_STR "\n";
             cliNone("\n");
             return CMD_NONE;
         }
@@ -1366,16 +1369,17 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
                 return CMD_FAILURE;
             }
 
-            // no i/o redirection for this debug command.
-            puts(SUCCESS_STR " :");
+
+            cliSuccess("%s\n", outFile==stdout? ":": "");
+            cout << lastStatusMessage;
 
             uint32_t start= Cli::parseUint(words[1]),
-                     end= (words.size()==3? start+Cli::parseUint(words[2]): graph->size());
-            if(byHead) graph->listArcsByHead(start, end);
-            else graph->listArcsByTail(start, end);
+                     end= (words.size()==3? start+Cli::parseUint(words[2]): graph->size()-start);
+            if(byHead) graph->listArcsByHead(start, end, outFile);
+            else graph->listArcsByTail(start, end, outFile);
 
-            puts("");
-            fflush(stdout);
+            fprintf(outFile, "\n");
+            fflush(outFile);
 
             return CMD_SUCCESS;
         }
