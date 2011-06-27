@@ -267,13 +267,13 @@ class Digraph
             arcContainer::iterator it;
             arc value= arc(tail, head);
 
-            it= lower_bound(arcsByHead.begin(), arcsByHead.begin()+sortedSize, value, compByHead);
-            if( it!=arcsByHead.begin()+sortedSize && *it==value )
+            it= lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead);
+            if( it!=arcsByHead.end() && *it==value )
                 arcsByHead.erase(it),
                 sortedSize--;
 
-            it= lower_bound(arcsByTail.begin(), arcsByTail.begin()+sortedSize, value, compByTail);
-            if( it!=arcsByTail.begin()+sortedSize && *it==value )
+            it= lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail);
+            if( it!=arcsByTail.end() && *it==value )
                 arcsByTail.erase(it),
                 sortedSize--;
         }
@@ -333,7 +333,12 @@ class Digraph
             result["ArcRamKiB"]= statInfo(_("total RAM consumed by arc data, in KiB"), arcsByHead.size()*sizeof(arc)*2/1024);
             bool invalid= false;
             uint32_t size= arcsByHead.size();
-            if(size!=arcsByTail.size()) invalid= true;
+            if(size!=arcsByTail.size())
+            {
+                invalid= true;
+                result["SizeTail"]= statInfo(_("tail array size"), arcsByTail.size());
+                result["SizeHead"]= statInfo(_("head array size"), arcsByHead.size());
+            }
             uint32_t numDups= 0;
             uint32_t minNodeID= U32MAX, maxNodeID= 0;
 //#define AVGNEIGHBORS
