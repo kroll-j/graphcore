@@ -266,16 +266,19 @@ class Digraph
         {
             arcContainer::iterator it;
             arc value= arc(tail, head);
+            bool found= false;
 
             it= lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead);
             if( it!=arcsByHead.end() && *it==value )
                 arcsByHead.erase(it),
-                sortedSize--;
+                found= true;
 
             it= lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail);
             if( it!=arcsByTail.end() && *it==value )
                 arcsByTail.erase(it),
-                sortedSize--;
+                found= true;
+
+            if(found) sortedSize--;
         }
 
         // replace predecessors (successors=false) or descendants (successors=true) of a node
