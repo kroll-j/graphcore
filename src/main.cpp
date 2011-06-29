@@ -740,7 +740,10 @@ class CoreCli: public Cli
                         continue;
                     }
                 }
-                commandHasDataSet= lineIndicatesDataset(command);
+                int cpos= 0;
+                if( (commandHasDataSet= lineIndicatesDataset(command, &cpos)) )
+                    command[cpos]= 0;
+
                 if(strlen(command))
                     execute(command, commandHasDataSet, inRedir, outRedir),
                     add_history(completeCommand);

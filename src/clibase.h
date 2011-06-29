@@ -280,12 +280,13 @@ inline bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &da
 
 
 // check whether a status line or command indicates that a data set will follow. used by core & server.
-static inline bool lineIndicatesDataset(const string& line)
+static inline bool lineIndicatesDataset(const string& line, int *colonPos= 0)
 {
     size_t pos= line.find(':');
     if(pos==string::npos) return false;
-    for(pos++; pos<line.size(); pos++)
-        if(!isspace(line[pos])) return false;
+    for(unsigned p= pos+1; p<line.size(); p++)
+        if(!isspace(line[p])) return false;
+    if(colonPos) *colonPos= pos;
     return true;
 }
 
