@@ -284,7 +284,7 @@ static inline bool lineIndicatesDataset(const string& line)
 {
     size_t pos= line.find(':');
     if(pos==string::npos) return false;
-    for(; pos<line.size(); pos++)
+    for(pos++; pos<line.size(); pos++)
         if(!isspace(line[pos])) return false;
     return true;
 }
