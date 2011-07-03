@@ -262,7 +262,7 @@ class Digraph
 
 
         // erase an arc from the graph
-        void eraseArc(uint32_t tail, uint32_t head)
+        bool eraseArc(uint32_t tail, uint32_t head)
         {
             arcContainer::iterator it;
             arc value= arc(tail, head);
@@ -279,6 +279,7 @@ class Digraph
                 found= true;
 
             if(found) sortedSize--;
+            return found;
         }
 
         // replace predecessors (successors=false) or descendants (successors=true) of a node
@@ -287,11 +288,45 @@ class Digraph
             NeighborIterator it(*this);
             if(successors) it.startDescendants(node);
             else it.startPredecessors(node);
+
+            // remove old neighbors of node
+            while(!it.checkFinished())
+                eraseArc(it.getArc().tail, it.getArc().head);
+
+            // add new neighbors and resort.
+            vector<uint32_t>::iterator p;
+            int oldSize= arcsByHead.size();
+            for(p= newNeighbors.begin(); p!= newNeighbors.end(); p++)
+            {
+                if(successors) addArc(node, *p, false);
+                else addArc(*p, node, false);
+            }
+            resort(oldSize);
+            sortedSize= size();
+            return true;
+        }
+
+#if 0
+        // old broken method, don't use.
+        // replace predecessors (successors=false) or descendants (successors=true) of a node
+        bool replaceNeighborsX(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
+        {
+            NeighborIterator it(*this);
+            if(successors) it.startDescendants(node);
+            else it.startPredecessors(node);
             stable_sort(newNeighbors.begin(), newNeighbors.end());
-            vector<uint32_t>::iterator p= newNeighbors.begin();
+            vector<uint32_t>::iterator p;
+
             // replace arcs
-            for(; !it.finished() && p!=newNeighbors.end(); ++it, ++p)
+            for(p= newNeighbors.begin(); !it.finished() && p!=newNeighbors.end(); ++it, ++p)
+            {
+//                arc a(it.getArc());
+//                (successors? a.head: a.tail)= *p;
+//                // only replace the neighbor if it doesn't generate a duplicate
+//                if(!arcExists(a.tail, a.head)) *(it.getIterator())= a;
                 (successors? it.getArc().head: it.getArc().tail)= *p;
+            }
+            // if old neighbor list is larger than new one
             if(!it.finished())
             {
                 // remove the rest
@@ -299,17 +334,28 @@ class Digraph
                 {
                     arcContainer::iterator f=
                         (successors? lower_bound(arcsByHead.begin(), arcsByHead.end(), it.getArc(), compByHead):
-                         lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail));
-                    if(f==(successors? arcsByHead.end(): arcsByTail.end()) || !(*f==it.getArc()))
+                                     lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail));
+                    fprintf(stderr, "removing arc %u,%u\n", f->tail,f->head);
+                    if( f==(successors? arcsByHead.end(): arcsByTail.end()) || !(*f==it.getArc()) )
+                    {
+                        printf("successors=%s arcsByHead.size()=%d arcsByTail.size()=%d sortedSize=%d\n"
+                               "*f=%u,%u it.getArc()=%u,%u\n"
+                               ,
+                               successors? "true": "false", arcsByHead.size(), arcsByTail.size(), sortedSize,
+                               f->tail,f->head, it.getArc().tail,it.getArc().head);
+                        abort();    // XXX
                         return false;
+                    }
                     if(successors)
                         arcsByTail.erase(it.getIterator()),
                         arcsByHead.erase(f);
                     else
                         arcsByTail.erase(f),
                         arcsByHead.erase(it.getIterator());
+                    sortedSize--;
                 }
             }
+            // if new neighbor list is larger than old one
             else if(p!=newNeighbors.end())
             {
                 // add new ones and resort
@@ -319,8 +365,10 @@ class Digraph
                     else addArc(*p, node, false);
                 resort(oldSize);
             }
+            sortedSize= size();
             return true;
         }
+#endif
 
         struct statInfo
         {
