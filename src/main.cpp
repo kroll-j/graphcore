@@ -288,10 +288,16 @@ class Digraph
             NeighborIterator it(*this);
             if(successors) it.startDescendants(node);
             else it.startPredecessors(node);
+            arcContainer oldArcs;
 
             // remove old neighbors of node
             while(!it.checkFinished())
-                eraseArc(it.getArc().tail, it.getArc().head);
+            {
+                oldArcs.push_back(it.getArc());
+                ++it;
+            }
+            for(arcContainer::iterator i= oldArcs.begin(); i!=oldArcs.end(); i++)
+                eraseArc(i->tail, i->head);
 
             // add new neighbors and resort.
             vector<uint32_t>::iterator p;
@@ -524,7 +530,7 @@ class Digraph
                 bool checkFinished()
                 {
                     if( (byHead==true && (it==graph.arcsByHead.end() || it->head!=startNode)) ||
-                            (byHead==false && (it==graph.arcsByTail.end() || it->tail!=startNode)) )
+                        (byHead==false && (it==graph.arcsByTail.end() || it->tail!=startNode)) )
                         return true;
                     else
                         return false;
