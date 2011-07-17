@@ -104,6 +104,7 @@ class Digraph
         {
             arcsByTail.clear();
             arcsByHead.clear();
+            sortedSize= 0;
         }
 
         // re-sort arcs starting with given index
