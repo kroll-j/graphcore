@@ -37,6 +37,14 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("quit",                 ACCESS_ADMIN,   ccShutdown());
 
     CORECOMMAND("protocol-version",     ACCESS_ADMIN,   ccProtocolVersion());
+
+#if 0   // not yet finished
+    CORECOMMAND("set-meta",             ACCESS_WRITE,   ccSetMeta());
+    CORECOMMAND("get-meta",             ACCESS_READ,    ccGetMeta());
+    CORECOMMAND("remove-meta",          ACCESS_WRITE,   ccRemoveMeta());
+    CORECOMMAND("list-meta",            ACCESS_READ,    ccListMeta());
+#endif
+
 CORECOMMANDS_END
 
 

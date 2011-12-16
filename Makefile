@@ -1,4 +1,4 @@
-CCFLAGS=-Wall
+CCFLAGS=-Wall -std=c++0x
 LDFLAGS=-lpthread -lreadline
 
 all: 		Release Debug

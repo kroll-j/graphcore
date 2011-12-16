@@ -13,6 +13,7 @@
 #include <map>
 #include <algorithm>
 #include <functional>
+#include <unordered_map>
 
 #include <stdint.h>
 #include <sys/time.h>
@@ -759,6 +760,9 @@ class CliCommand_RTOther: public CoreCliCommand
 class CoreCli: public Cli
 {
     public:
+        typedef unordered_map<string, string> MetaMap;
+        MetaMap meta;
+    
         CoreCli(Digraph *g);
 
         // read and execute commands from stdin until eof or quit command
@@ -1554,6 +1558,130 @@ class ccProtocolVersion: public CliCommand_RTVoid
             return CMD_SUCCESS;
         }
 };
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccSetMeta
+// add or set a free-form variable
+class ccSetMeta: public CliCommand_RTVoid
+{
+    public:
+        string getSynopsis()        { return getName() + " NAME VALUE"; }
+        string getHelpText()        { return _("add or set an arbitrary text variable."); }
+
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if( words.size()!=3 || hasDataSet || (inFile!=stdin) )
+            {
+                syntaxError();
+                printf("%d %d %d\n", words.size(), hasDataSet, inFile==stdin);
+                fflush(stdout);
+                return CMD_FAILURE;
+            }
+
+            // xxx todo
+            
+            // todo: check if variable name is valid
+            
+            cli->meta[words[1]]= words[2];
+            
+            cliSuccess("\n");
+            
+            return CMD_SUCCESS;
+        }
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccGetMeta
+// read a free-form variable
+class ccGetMeta: public CliCommand_RTVoid
+{
+    public:
+        string getSynopsis()        { return getName() + " NAME"; }
+        string getHelpText()        { return _("read a named text variable."); }
+
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if( words.size()!=2 || hasDataSet || inFile!=stdin )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            // xxx todo
+            
+            CoreCli::MetaMap::iterator it= cli->meta.find(words[1]);
+            if(it==cli->meta.end())
+            {
+                cliFailure(_("no such variable '%s'.\n"), words[1].c_str());
+                return CMD_FAILURE;
+            }
+            
+            cliValue("%s\n", it->second.c_str());
+            
+            return CMD_VALUE;
+        }
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccRemoveMeta
+// remove a free-form variable
+class ccRemoveMeta: public CliCommand_RTVoid
+{
+    public:
+        string getSynopsis()        { return getName() + " NAME"; }
+        string getHelpText()        { return _("remove the named variable."); }
+
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if( words.size()!=2 || hasDataSet || inFile!=stdin )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            // xxx todo
+            
+            return CMD_SUCCESS;
+        }
+};
+
+
+/////// todo: http status line
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccListMeta
+// list all variables
+class ccListMeta: public CliCommand_RTOther
+{
+    public:
+        string getSynopsis()        { return getName(); }
+        string getHelpText()        { return _("list all variables in this graph."); }
+
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        {
+            if( words.size()!=1 || hasDataSet || inFile!=stdin )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            cliSuccess(_("%d meta variables:"), cli->meta.size());
+            cout << lastStatusMessage << endl;
+            
+            for(CoreCli::MetaMap::iterator it= cli->meta.begin(); it!=cli->meta.end(); it++)
+                cout << it->first << "," << it->second << endl;
+            
+            cout << endl;
+            
+            return CMD_SUCCESS;
+        }
+};
+
 
 
 

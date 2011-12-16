@@ -20,11 +20,13 @@ using namespace std;
 #define ERROR_STR "ERROR!"
 #define NONE_STR "NONE."
 #define DENIED_STR "DENIED!"    // only used in server.
+#define VALUE_STR "VALUE:"
 #define cliMessage(str, x...) ({ char c[2048]; int n= sprintf(c, str " "); snprintf(c+n, sizeof(c)-n, x); lastStatusMessage= c; })
 #define cliSuccess(x...) cliMessage(SUCCESS_STR, x)
 #define cliFailure(x...) cliMessage(FAIL_STR, x)
 #define cliError(x...) cliMessage(ERROR_STR, x)
 #define cliNone(x...) cliMessage(NONE_STR, x)
+#define cliValue(x...) cliMessage(VALUE_STR, x)
 
 // bump this up if any part of the protocol between graphcore and graphserv changes.
 #define PROTOCOL_VERSION    2
@@ -35,12 +37,13 @@ using namespace std;
     CMD_SUCCESS,        /* command succeeded */                         \
     CMD_FAILURE,        /* command failed, graph did not change */      \
     CMD_ERROR,          /* command failed, graph may have changed */    \
-    CMD_NONE            /* command succeeded, but no answer to query was found */
+    CMD_NONE,           /* command succeeded, but no answer to query was found */   \
+    CMD_VALUE           /* a value is returned in-line (*-meta commands) */
 
 // list of all core command status strings, in the same order as the codes above.
 // needed for translation to and from integer status codes.
 #define CORECMDSTATUSSTRINGS  \
-        SUCCESS_STR, FAIL_STR, ERROR_STR, NONE_STR
+        SUCCESS_STR, FAIL_STR, ERROR_STR, NONE_STR, VALUE_STR
 
 inline void chomp(char *line) { int n= strlen(line); if(n && line[n-1]=='\n') line[n-1]= 0; }
 
@@ -282,7 +285,7 @@ inline bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &da
 // check whether a status line or command indicates that a data set will follow. used by core & server.
 static inline bool lineIndicatesDataset(const string& line, int *colonPos= 0)
 {
-    size_t pos= line.find(':');
+    size_t pos= line.rfind(':');
     if(pos==string::npos) return false;
     for(unsigned p= pos+1; p<line.size(); p++)
         if(!isspace(line[p])) return false;
