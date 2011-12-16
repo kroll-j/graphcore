@@ -447,7 +447,7 @@ class Digraph
         {
             // just to show that there is no padding for 32-bit values. even on 64-bit platforms.
             printf("distance between arcs in bytes (should be 8): %d\n",
-                   (char*)&arcsByHead[1] - (char*)&arcsByHead[0]);
+                   int((char*)&arcsByHead[1] - (char*)&arcsByHead[0]));
         }
 
 
@@ -656,7 +656,7 @@ class Digraph
         struct sorterThreadArg
         {
             arcContainer& arcs;
-            int begin, mergeBegin, end;
+            size_t begin, mergeBegin, end;
             bool (*compFunc)(arc a, arc b);
         };
         // thread function for sorting
@@ -1576,7 +1576,7 @@ class ccSetMeta: public CliCommand_RTVoid
             if( words.size()!=3 || hasDataSet || (inFile!=stdin) )
             {
                 syntaxError();
-                printf("%d %d %d\n", words.size(), hasDataSet, inFile==stdin);
+//                printf("%d %d %d\n", int)words.size(), hasDataSet, inFile==stdin);
                 fflush(stdout);
                 return CMD_FAILURE;
             }
@@ -1670,7 +1670,7 @@ class ccListMeta: public CliCommand_RTOther
                 return CMD_FAILURE;
             }
 
-            cliSuccess(_("%d meta variables:"), cli->meta.size());
+            cliSuccess(_("%d meta variables:"), (int)cli->meta.size());
             cout << lastStatusMessage << endl;
             
             for(CoreCli::MetaMap::iterator it= cli->meta.begin(); it!=cli->meta.end(); it++)

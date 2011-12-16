@@ -29,7 +29,7 @@ using namespace std;
 #define cliValue(x...) cliMessage(VALUE_STR, x)
 
 // bump this up if any part of the protocol between graphcore and graphserv changes.
-#define PROTOCOL_VERSION    2
+#define PROTOCOL_VERSION    3
 
 // list of core command status codes.
 // server and core include these in an enum.
