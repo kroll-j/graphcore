@@ -38,7 +38,7 @@ CORECOMMANDS_BEGIN
 
     CORECOMMAND("protocol-version",     ACCESS_ADMIN,   ccProtocolVersion());
 
-#if 0   // not yet finished
+#if 1   // WiP.
     CORECOMMAND("set-meta",             ACCESS_WRITE,   ccSetMeta());
     CORECOMMAND("get-meta",             ACCESS_READ,    ccGetMeta());
     CORECOMMAND("remove-meta",          ACCESS_WRITE,   ccRemoveMeta());

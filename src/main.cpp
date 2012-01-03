@@ -1611,7 +1611,7 @@ class ccGetMeta: public CliCommand_RTVoid
                 return CMD_FAILURE;
             }
 
-            // xxx todo
+            // xxx todo: testing (http)
             
             CoreCli::MetaMap::iterator it= cli->meta.find(words[1]);
             if(it==cli->meta.end())
@@ -1646,6 +1646,15 @@ class ccRemoveMeta: public CliCommand_RTVoid
 
             // xxx todo
             
+            if(cli->meta.find(words[1])==cli->meta.end())
+            {
+                cliFailure(_("no such variable %s.\n"), words[1].c_str());
+                return CMD_FAILURE;
+            }
+            
+            cli->meta.erase(words[1]);
+            cliSuccess("\n");
+            
             return CMD_SUCCESS;
         }
 };
@@ -1669,7 +1678,7 @@ class ccListMeta: public CliCommand_RTOther
                 syntaxError();
                 return CMD_FAILURE;
             }
-
+            
             cliSuccess(_("%d meta variables:"), (int)cli->meta.size());
             cout << lastStatusMessage << endl;
             
