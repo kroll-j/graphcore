@@ -133,6 +133,10 @@ of the data-set until the blank line, then returns an ERROR response (see above)
 any line in the data-set is illegal, the command may or may not apply changes from any
 of the valid lines.
 
+Meta Variables
+~~~~~~~~~~~~~~
+Arbitrary variables can be queried and modified with the *-meta commands (see below).
+
 Command Overview
 -----------------
 The following commands are supported:
@@ -223,6 +227,26 @@ list-roots
 list-leaves
   list all nodes that have no successors, as a single column data-set. If there
   are no nodes in the graph, or all nodes are part of circles, the empty set is returned.
+
+set-meta VARIABLE VALUE
+  sets free-form meta VARIABLE to VALUE. 
+  if the variable does not exist, it is created.
+  variable names may contain alphabetic characters (a-z A-Z), digits (0-9), hyphens (-) and underscores (_),
+  and must start with an alphabetic character, a hyphen or an underscore.
+
+get-meta VARIABLE
+  reads a meta variable. value is returned in the status line in the form 'VALUE: string'.
+  if the variable does not exist, the command fails.
+
+remove-meta VARIABLE
+  removes the named meta variable. 
+  if the variable does not exist, the command fails.
+
+list-meta
+  returns a data set of all existing meta variables in the form 'name,value'.
+  the variables are listed in arbitrary order.
+  if no variables are defined, the command returns the empty set.
+
 
 Operator Overview
 -------------------

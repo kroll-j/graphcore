@@ -1567,9 +1567,28 @@ class ccProtocolVersion: public CliCommand_RTVoid
 // add or set a free-form variable
 class ccSetMeta: public CliCommand_RTVoid
 {
+    // check for valid variable name. these are the same constraints as for core instance names.
+    // [a-zA-Z_-][a-zA-Z0-9_-]*
+    bool isValidVariableName(const string& name)
+    {
+        int sz= name.size();
+        if(!sz) return false;
+        char c= name[0];
+        if( !isupper(c) && !islower(c) && c!='-' && c!='_' ) return false;
+            for(size_t i= 0; i<name.size(); i++)
+        {
+            c= name[i];
+            if( !isupper(c) && !islower(c) && !isdigit(c) && c!='-' && c!='_' )
+                return false;
+        }
+        return true;
+    }
+
     public:
         string getSynopsis()        { return getName() + " NAME VALUE"; }
-        string getHelpText()        { return _("add or set an arbitrary text variable."); }
+        string getHelpText()        { return _("add or set an arbitrary text variable.\n"
+                "# variable names may contain alphabetic characters (a-z A-Z), digits (0-9), hyphens (-) and underscores (_),\n"
+                "# and must start with an alphabetic character, a hyphen or an underscore."); }
 
         CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
         {
@@ -1583,7 +1602,11 @@ class ccSetMeta: public CliCommand_RTVoid
 
             // xxx todo
             
-            // todo: check if variable name is valid
+            if(!isValidVariableName(words[1]))
+            {
+                cliFailure(_("invalid variable name (see help)\n"));
+                return CMD_FAILURE;
+            }
             
             cli->meta[words[1]]= words[2];
             
