@@ -1595,13 +1595,10 @@ class ccSetMeta: public CliCommand_RTVoid
             if( words.size()!=3 || hasDataSet || (inFile!=stdin) )
             {
                 syntaxError();
-//                printf("%d %d %d\n", int)words.size(), hasDataSet, inFile==stdin);
                 fflush(stdout);
                 return CMD_FAILURE;
             }
 
-            // xxx todo
-            
             if(!isValidVariableName(words[1]))
             {
                 cliFailure(_("invalid variable name (see help)\n"));
@@ -1634,8 +1631,6 @@ class ccGetMeta: public CliCommand_RTVoid
                 return CMD_FAILURE;
             }
 
-            // xxx todo: testing (http)
-            
             CoreCli::MetaMap::iterator it= cli->meta.find(words[1]);
             if(it==cli->meta.end())
             {
@@ -1667,8 +1662,6 @@ class ccRemoveMeta: public CliCommand_RTVoid
                 return CMD_FAILURE;
             }
 
-            // xxx todo
-            
             if(cli->meta.find(words[1])==cli->meta.end())
             {
                 cliFailure(_("no such variable %s.\n"), words[1].c_str());
