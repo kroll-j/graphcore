@@ -244,7 +244,7 @@ remove-meta VARIABLE
 
 list-meta
   returns a data set of all existing meta variables in the form 'name,value'.
-  the variables are listed in arbitrary order.
+  the variables are listed in lexicographical order.
   if no variables are defined, the command returns the empty set.
 
 
@@ -273,3 +273,9 @@ subtraction (&&!):
   that are in the result of the left operand but not inthe result of the right operant.
   If and only if the left operant returns NONE, the result is NONE. If the right operant
   returns NONE, the result is the result of the left operant.
+
+| 
+| 
+| `GraphServ, GraphCore (C) 2011, 2012 Wikimedia Deutschland, written by Johannes Kroll <jkroll at lavabit com>.`
+| `Last update to this text: 2012/01/05`
+

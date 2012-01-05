@@ -1,5 +1,18 @@
 // Graph Processor core.
-// (c) Wikimedia Deutschland, written by Johannes Kroll in 2011
+// (c) Wikimedia Deutschland, written by Johannes Kroll in 2011, 2012
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cstring>
 #include <cstdarg>
@@ -1120,7 +1133,7 @@ class ccHelp: public CliCommand_RTOther
             }
             else
             {
-                cliSuccess(_("available commands%s\n"), outFile==stdout? ":": "");
+                cliSuccess(_("available core commands%s\n"), outFile==stdout? ":": "");
                 cout << lastStatusMessage;
                 vector<CliCommand*> &commands= cli->getCommands();
                 for(unsigned i= 0; i<commands.size(); i++)
@@ -1676,8 +1689,6 @@ class ccRemoveMeta: public CliCommand_RTVoid
 };
 
 
-/////// todo: http status line
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccListMeta
 // list all variables
@@ -1698,7 +1709,15 @@ class ccListMeta: public CliCommand_RTOther
             cliSuccess(_("%d meta variables:"), (int)cli->meta.size());
             cout << lastStatusMessage << endl;
             
-            for(CoreCli::MetaMap::iterator it= cli->meta.begin(); it!=cli->meta.end(); it++)
+            vector< pair<string,string> > sortedVars;
+            sortedVars.reserve(cli->meta.size());
+            
+            for(auto it= cli->meta.begin(); it!=cli->meta.end(); it++)
+                sortedVars.push_back(*it);
+            
+            std::sort(sortedVars.begin(), sortedVars.end());
+            
+            for(auto it= sortedVars.begin(); it!=sortedVars.end(); it++)
                 cout << it->first << "," << it->second << endl;
             
             cout << endl;
