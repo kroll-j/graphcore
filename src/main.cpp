@@ -903,8 +903,8 @@ class CoreCli: public Cli
                                                             result2.begin(), result2.end(),
                                                             mergeResult.begin());
                                     }
-// && should return NONE *only* if one of the operants return NONE.
-// &&! should return NONE if the left operant is NONE. NONE on the right side is treated like an empty set.
+// && should return NONE *only* if one of the operands return NONE.
+// &&! should return NONE if the left operand is NONE. NONE on the right side is treated like an empty set.
                                     if( (opstring=="&&" && (status==CMD_NONE||status2==CMD_NONE)) ||
                                         (opstring=="&&!" && (status==CMD_NONE)) )
                                         cout << "NONE." << endl;
@@ -1100,25 +1100,25 @@ class ccHelp: public CliCommand_RTOther
 # \n\
 # <COMMAND> <OPERATOR> <COMMAND>\n\
 # \n\
-# This way, a composite command is formed. Note that if either operant\n\
+# This way, a composite command is formed. Note that if either operand\n\
 # fails, the composite command also fails.\n\
 # \n\
 # The following operators are currently specified:\n\
 # \n\
 # intersection (&&):\n\
-# The intersection operator takes two operants, both of wich must\n\
+# The intersection operator takes two operands, both of wich must\n\
 # return a set of nodes. The result of the composite command is a set of\n\
 # nodes that contains only the nodes that are in both, the result of the\n\
 # left operand, and the result of the right. If and only if either\n\
-# operant returns NONE, the result is NONE. \n\
+# operand returns NONE, the result is NONE. \n\
 # \n\
 # subtraction (&&!):\n\
-# The subtraction operator takes two operants, both of\n\
+# The subtraction operator takes two operands, both of\n\
 # which must return a set of nodes. The result of the composite command is\n\
 # a set of nodes that contains only the nodes that are in the result of\n\
-# the left operand but not in the result of the right operant. If and only\n\
-# if the left operant returns NONE, the result is NONE. If the right\n\
-# operant returns NONE, the result is the result of the left operant.\n\n");
+# the left operand but not in the result of the right operand. If and only\n\
+# if the left operand returns NONE, the result is NONE. If the right\n\
+# operand returns NONE, the result is the result of the left operand.\n\n");
                     return CMD_SUCCESS;
                 }
                 CliCommand *cmd= cli->findCommand(words[1]);
