@@ -776,12 +776,7 @@ class Digraph
         static void moveToEnd(arcContainer& arcs, int a, int end)
         {
             for(int i= a; i+1<end; i++)
-            {
-                arc a= arcs[i+1];
-                arcs[i+1]= arcs[i+0];
-                arcs[i+0]= arcs[i+1];
-                //std::swap(it[0], it[1]);
-            }
+                std::swap(it[0], it[1]);
         }
 
         // helper function: merge & resort
