@@ -41,6 +41,24 @@
 
 #include "clibase.h"
 
+
+// calculate average successors/predecessors per node in the stats command. 
+// this takes a little long, so it's disabled.
+// #define AVGNEIGHBORS 
+
+// in add-arcs, use mark+remove to remove duplicates from data set instead of erase(). fast.
+#define DUPCHECK_MARKRM
+
+// in add-arcs, move duplicates upwards, then erase. slow, don't use.
+//#define DUPCHECK_MOVERM
+
+// in remove-arcs, use mark+remove instead of container's erase() method.
+#define REMOVEARCS_MARKRM
+
+// in replace-*, use mark+remove instead of container's erase() method.
+#define REPLACENEIGHBORS_MARKRM
+
+
 enum CommandStatus
 {
     CORECMDSTATUSCODES
@@ -75,6 +93,8 @@ class Digraph
         struct arc
         {
             uint32_t tail, head;
+            
+            enum { NODE_MAX= 0xFFFFFFFF };
 
             arc(): tail(0), head(0) {}
             arc(uint32_t _tail, uint32_t _head): tail(_tail), head(_head) {}
@@ -297,6 +317,69 @@ class Digraph
             return found;
         }
 
+        // queue an arc for removal. returns true if the arc was found and successfully queued.
+        // call this for all arcs to be removed, 
+        // then call removeQueuedArcs() to complete the operation.
+        // this method is more efficient than calling eraseArc() repeatedly.
+        // because this stores an index referring to the arc internally, 
+        // there must not be any write accesses to the graph 
+        // between calls to queueArcForRemoval() and removeQueuedArcs().
+        bool queueArcForRemoval(uint32_t tail, uint32_t head)
+        {
+            arc value(tail,head);
+            
+            // we can't just mark the arcs with a special value here (such as the highest possible 
+            // integer for both tail and head) because that would break the container's ordering.
+            // so, we first queue the indices of arcs to be removed.
+            auto findArc= [&](arcContainer& arcs, bool(*compFn)(arc,arc)) -> ssize_t
+            {
+                arcContainer::iterator it= lower_bound(arcs.begin(), arcs.end(), 
+                    value, compFn);
+                if( it!=arcs.end() && *it==value )
+                    return it-arcs.begin();
+                return -1;
+            };
+            
+            ssize_t bh= findArc(arcsByHead, compByHead), bt= findArc(arcsByTail, compByTail);
+            if(bh<0||bt<0) return false;
+            
+            arcRemovalQueueBH.push_back(bh);
+            arcRemovalQueueBT.push_back(bt);
+            
+            return true;
+        }
+        
+        int removeQueuedArcs()
+        {
+            arc markVal(arc::NODE_MAX, arc::NODE_MAX);
+            auto mark= [&](arcContainer& arcs, deque<size_t>& q) -> size_t
+            {
+                size_t minIdx= arcs.size();
+                while(q.size())
+                {
+                    size_t idx= q.front();
+                    if(idx<minIdx) minIdx= idx;
+                    arcs[idx]= markVal;
+                    q.pop_front();
+                }
+                return minIdx;
+            };
+            
+            size_t oldSize= size();
+            // now mark all arcs queued for removal
+            size_t minIdx= mark(arcsByHead, arcRemovalQueueBH);
+            minIdx= min(minIdx, mark(arcsByTail, arcRemovalQueueBT));
+            // sort, so that marked arcs end up at containers' ends
+            // only sort values from the smallest index of all removed arcs
+            resort(minIdx);
+            // resort also took care of removing all marked arcs because they are duplicates --
+            // except the last one
+            if(arcsByHead.size() && arcsByHead.back()==markVal) arcsByHead.pop_back();
+            if(arcsByTail.size() && arcsByTail.back()==markVal) arcsByTail.pop_back();
+            sortedSize= size();
+            return oldSize-size();
+        }
+        
         // replace predecessors (successors=false) or descendants (successors=true) of a node
         bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
         {
@@ -312,7 +395,15 @@ class Digraph
                 ++it;
             }
             for(arcContainer::iterator i= oldArcs.begin(); i!=oldArcs.end(); i++)
+#ifndef REPLACENEIGHBORS_MARKRM
                 eraseArc(i->tail, i->head);
+#else
+                // todo: keep track of lowest idx for sorting?
+                queueArcForRemoval(i->tail, i->head);
+            
+            resort();
+            removeQueuedArcs();
+#endif
 
             // add new neighbors and resort.
             vector<uint32_t>::iterator p;
@@ -413,7 +504,6 @@ class Digraph
             }
             uint32_t numDups= 0;
             uint32_t minNodeID= U32MAX, maxNodeID= 0;
-//#define AVGNEIGHBORS
 #ifdef AVGNEIGHBORS // calculate average successors/predecessors per node. this takes a little long.
             map<uint32_t,uint32_t> totalPredecessors;
             map<uint32_t,uint32_t> totalSuccessors;
@@ -454,14 +544,6 @@ class Digraph
 
 
         // below is intermediate/internal testing stuff unrelated to the spec.
-
-
-        void sizeSanityCheck()
-        {
-            // just to show that there is no padding for 32-bit values. even on 64-bit platforms.
-            printf("distance between arcs in bytes (should be 8): %d\n",
-                   int((char*)&arcsByHead[1] - (char*)&arcsByHead[0]));
-        }
 
 
         // check for duplicates
@@ -525,6 +607,9 @@ class Digraph
         typedef deque< arc > arcContainer;
 //        typedef vector< arc > arcContainer;
         arcContainer arcsByTail, arcsByHead;
+        
+        // indices into above containers of arcs queued for removal.
+        deque<size_t> arcRemovalQueueBH, arcRemovalQueueBT;
 
         uint32_t sortedSize;
 
@@ -639,7 +724,6 @@ class Digraph
         };
         friend class NeighborIterator;
 
-
         // helper function for sorting arcs by tail
         static bool compByTail(arc a, arc b)
         {
@@ -688,27 +772,64 @@ class Digraph
             doMerge(arcsByTail, 0, mergeBegin, arcsByTail.size(), compByTail);
             pthread_join(threadID, 0);
         }
+        
+        static void moveToEnd(arcContainer& arcs, int a, int end)
+        {
+            for(int i= a; i+1<end; i++)
+            {
+                arc a= arcs[i+1];
+                arcs[i+1]= arcs[i+0];
+                arcs[i+0]= arcs[i+1];
+                //std::swap(it[0], it[1]);
+            }
+        }
 
         // helper function: merge & resort
+        // also removes duplicates in the given range
         static void doMerge(arcContainer &arcs, int begin, int mergeBegin, int end,
                             bool (*compFunc)(arc a, arc b))
         {
             stable_sort(arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
-#if 1
+
             unsigned numDups= 0;
             for(int i= mergeBegin; i<end-1; i++)
                 if( arcs[i] == arcs[i+1] )
                 {
+#if defined(DUPCHECK_MOVERM)
+                    moveToEnd(arcs, i, end);
+                    i--;
+                    end--;
+#elif defined(DUPCHECK_MARKRM)
+                    // erase()ing from the middle is slow 
+                    // just mark the duplicate to be removed below
+                    arcs[i].tail= arcs[i].head= 0xFFFFFFFF;
+#else
                     arcs.erase(arcs.begin()+i);
                     i--;
                     end--;
+#endif
                     numDups++;
                 }
-//            if(numDups)
-//                printf("%d dups in set, begin=%d mergeBegin=%d end=%d size()=%zu\n", numDups, begin, mergeBegin, end, arcs.size());
+            if(numDups)
+            {
+#if defined(DUPCHECK_MOVERM)
+                // erase the duplicate arcs which were moved to the end of the container
+                arcs.erase(arcs.end()-numDups, arcs.end());
+#elif defined(DUPCHECK_MARKRM)
+                // sort arcs so that marked duplicates end up at the end of the container
+                stable_sort(arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
+                // erasing at the end is fast
+                arcs.erase(arcs.end()-numDups, arcs.end());
+                end-= numDups;
 #endif
+//                fprintf(stderr, "%u dups in merge set, begin=%d mergeBegin=%d end=%d size()=%zu\n", 
+//                    numDups, begin, mergeBegin, end, arcs.size());
+            }
+
             inplace_merge(arcs.begin()+begin, arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
         }
+        
+        friend class ccRMStuff; // can read arc data directly for debugging.
 };
 
 
@@ -1267,8 +1388,14 @@ class ccRemoveArcs: public CliCommand_RTVoid
             if(!readNodeset(inFile, dataset, 2))
                 return CMD_FAILURE;
 
+#ifdef REMOVEARCS_MARKRM
+            for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+                graph->queueArcForRemoval((*i)[0], (*i)[1]);
+            graph->removeQueuedArcs();
+#else
             for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
                 graph->eraseArc((*i)[0], (*i)[1]);
+#endif
 
             cliSuccess("\n");
             return CMD_SUCCESS;
@@ -1312,7 +1439,8 @@ template<Digraph::NodeRelation searchType>
             for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
                 newNeighbors.push_back((*i)[0]);
 
-            if(graph->replaceNeighbors(Cli::parseUint(words[1]), newNeighbors, searchType==Digraph::DESCENDANTS))
+            if(graph->replaceNeighbors(Cli::parseUint(words[1]), newNeighbors, 
+                                        searchType==Digraph::DESCENDANTS))
             {
                 cliSuccess("\n");
                 return CMD_SUCCESS;
@@ -1472,16 +1600,17 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccAddStuff
 // (debugging)
-class ccAddStuff: public CliCommand_RTOther
+class ccAddStuff: public CliCommand_RTVoid
 {
     public:
-        string getSynopsis()        { return getName(); }
+        string getSynopsis()        { return getName() + " NUM [MOD=RAND_MAX]"; }
         string getHelpText()
         {
-            return _("debugging");
+            return _("debugging: add NUM random arcs with tail,head in range 1..MOD directly to the graph");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, 
+                                bool hasDataSet, FILE *inFile)
         {
             if( hasDataSet ||
                 (words.size()==3 && !Cli::isValidUint(words[2])) ||
@@ -1493,17 +1622,77 @@ class ccAddStuff: public CliCommand_RTOther
             }
 
             uint32_t num= Cli::parseUint(words[1]);
+            uint32_t mod= (words.size()>2? Cli::parseUint(words[2]): RAND_MAX);
 
-//            vector< vector<uint32_t> > tmp;
-//            tmp.resize(num);
-
+            double tStart= getTime();
             uint32_t oldSize= graph->size();
             for(unsigned i= 0; i<num; i++)
             {
-                graph->addArc(rand()%10000, rand()%10000, false);
+                graph->addArc(rand()%mod+1, rand()%mod+1, false);
             }
+            double tEndAdd= getTime();
             graph->resort(oldSize);
+            double tEnd= getTime();
+            
+            cliSuccess("added in %.2f sec, merged in %.2f sec\n", tEndAdd-tStart, tEnd-tEndAdd);
 
+            return CMD_SUCCESS;
+        }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccRMStuff
+// (debugging)
+class ccRMStuff: public CliCommand_RTVoid
+{
+    public:
+        string getSynopsis()        { return getName() + " NUM"; }
+        string getHelpText()
+        {
+            return _("debugging: remove NUM random arcs directly from the graph");
+        }
+
+        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, 
+                                bool hasDataSet, FILE *inFile)
+        {
+            if( hasDataSet ||
+                words.size()!=2 ||
+                !Cli::isValidUint(words[1]) )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+            uint32_t num= Cli::parseUint(words[1]);
+            
+            deque<Digraph::arc> rmQueue;
+
+            double tStart= getTime();
+            uint32_t oldSize= graph->size();
+            if(oldSize) 
+            {
+                // queue them first so that valid comparison between removal methods is possible
+                for(unsigned i= 0; i<num; i++)
+                {
+                    size_t r= rand()%oldSize;
+                    rmQueue.push_back(graph->arcsByHead[r]);
+                }
+                while(rmQueue.size())
+                {
+                    Digraph::arc& a= rmQueue.front();
+                    rmQueue.pop_front();
+#ifdef REMOVEARCS_MARKRM
+                    graph->queueArcForRemoval(a.tail, a.head);
+                }
+                graph->removeQueuedArcs();
+#else
+                    graph->eraseArc(a.tail, a.head);
+                }
+#endif
+            }
+            double tEnd= getTime();
+            
+            cliSuccess("removed %d arcs in %.2f sec\n", oldSize-graph->size(), tEnd-tStart);
             return CMD_SUCCESS;
         }
 };
@@ -1528,7 +1717,6 @@ class ccMallocStats: public CliCommand_RTOther
                 return CMD_FAILURE;
             }
 
-            graph->sizeSanityCheck();
 //            printf("Mmapped: %dM used: %dM (%d%%)\n",
 //                   gMmappedBytes/(1024*1024), gUsedBytes/(1024*1024), gUsedBytes/(gMmappedBytes/100));
 

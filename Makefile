@@ -1,4 +1,4 @@
-CCFLAGS=-Wall -std=c++0x
+CCFLAGS=-Wall -std=c++0x -ggdb
 LDFLAGS=-lpthread -lreadline
 
 all: 		Release Debug
@@ -7,7 +7,7 @@ Release:	graphcore
 Debug:		graphcore.dbg
 
 graphcore:	src/main.cpp src/*.h
-		g++ $(CCFLAGS) -O3 -fexpensive-optimizations src/main.cpp $(LDFLAGS) -ographcore
+		g++ $(CCFLAGS) -O3 src/main.cpp $(LDFLAGS) -ographcore
 
 graphcore.dbg:	src/main.cpp src/*.h
 		g++ $(CCFLAGS) -O0 -DDEBUG_COMMANDS -ggdb src/main.cpp $(LDFLAGS) -ographcore.dbg

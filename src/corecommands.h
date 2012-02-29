@@ -42,6 +42,7 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("list-by-tail",         ACCESS_READ,    ccListArcs<false>());
     CORECOMMAND("list-by-head",         ACCESS_READ,    ccListArcs<true>());
     CORECOMMAND("add-stuff",            ACCESS_WRITE,   ccAddStuff());
+    CORECOMMAND("rm-stuff",             ACCESS_WRITE,   ccRMStuff());
     CORECOMMAND("malloc-stats",         ACCESS_READ,    ccMallocStats());
 #endif
 
@@ -51,12 +52,10 @@ CORECOMMANDS_BEGIN
 
     CORECOMMAND("protocol-version",     ACCESS_ADMIN,   ccProtocolVersion());
 
-#if 1   // WiP.
     CORECOMMAND("set-meta",             ACCESS_WRITE,   ccSetMeta());
     CORECOMMAND("get-meta",             ACCESS_READ,    ccGetMeta());
     CORECOMMAND("remove-meta",          ACCESS_WRITE,   ccRemoveMeta());
     CORECOMMAND("list-meta",            ACCESS_READ,    ccListMeta());
-#endif
  
 CORECOMMANDS_END
 
