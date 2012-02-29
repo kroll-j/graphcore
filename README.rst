@@ -21,6 +21,11 @@ commands:
 	- clear_
 	- shutdown_
 	- quit_
+	- protocol-version_
+	- set-meta_
+	- get-meta_
+	- remove-meta_
+	- list-meta_
 
 .. _help:
 
@@ -228,4 +233,61 @@ quit
 
 	syntax: quit
 	shutdown the graph processor.
+
+.. _protocol-version:
+
+protocol-version
+
+
+::
+
+
+	syntax: protocol-version
+	print PROTOCOL_VERSION. for internal use only.
+
+.. _set-meta:
+
+set-meta
+
+
+::
+
+
+	syntax: set-meta NAME VALUE
+	add or set an arbitrary text variable.
+	variable names may contain alphabetic characters (a-z A-Z), digits (0-9), hyphens (-) and underscores (_),
+	and must start with an alphabetic character, a hyphen or an underscore.
+
+.. _get-meta:
+
+get-meta
+
+
+::
+
+
+	syntax: get-meta NAME
+	read a named text variable.
+
+.. _remove-meta:
+
+remove-meta
+
+
+::
+
+
+	syntax: remove-meta NAME
+	remove the named variable.
+
+.. _list-meta:
+
+list-meta
+
+
+::
+
+
+	syntax: list-meta
+	list all variables in this graph.
 
