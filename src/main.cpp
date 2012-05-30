@@ -87,27 +87,47 @@ bool isInteractive()
 }
 
 
-class Digraph
+struct BasicArc
 {
-    public:
-        struct arc
-        {
-            uint32_t tail, head;
-            
-            enum { NODE_MAX= 0xFFFFFFFF };
+	uint32_t tail, head;
+	
+	enum { NODE_MAX= 0xFFFFFFFF };
 
-            arc(): tail(0), head(0) {}
-            arc(uint32_t _tail, uint32_t _head): tail(_tail), head(_head) {}
-            bool operator< (arc a) const
-            {
-                return (a.tail==tail? a.head<head: a.tail<tail);
-            }
-            bool operator== (arc a) const
-            {
-                return (a.tail==tail && a.head==head);
-            }
-        };
+	BasicArc(): tail(0), head(0) {}
+	BasicArc(uint32_t _tail, uint32_t _head): tail(_tail), head(_head) {}
+	bool operator< (BasicArc a) const
+	{
+		return (a.tail==tail? a.head<head: a.tail<tail);
+	}
+	bool operator== (BasicArc a) const
+	{
+		return (a.tail==tail && a.head==head);
+	}
+	
+	// save this arc to a file in text format
+	bool serialize(FILE *f)
+	{
+		return fprintf(f, "%u, %u\n", tail, head) > 0;
+	}
+	
+	// load arc from file
+	bool deserialize(FILE *f)
+	{
+		unsigned long t, h;
+		if(fscanf(f, "%lu, %lu\n", &t, &h)==2)
+		{
+			tail= t; head= h;
+			return true;
+		}
+		return false;
+	}
+};
 
+#define DIGRAPH_FILEDUMP_ID	"CatScanDump-01"
+
+template<typename arc=BasicArc> class Digraph
+{
+	public:
         Digraph(): sortedSize(0)
         {
         }
@@ -115,12 +135,58 @@ class Digraph
         ~Digraph()
         {
         }
-
+		
+		// simple ascii dump format:
+		// <DIGRAPH_FILEDUMP_ID>\n
+		// <number of arcs>\n
+		// tail, head\n
+		// tail, head\n ...
+		
+		// dump the graph to a file.
+		bool serialize(const char *filename, std::string& error)
+		{
+			FILE *f= fopen(filename, "w");
+			if(!f) { error= strerror(errno); return false; }
+			if(fprintf(f, "%s\n%u\n", DIGRAPH_FILEDUMP_ID, size())<0)
+			{ error= strerror(errno); fclose(f); return false; }
+			for(ArcContainerIterator it= arcsByHead.begin(); it!=arcsByHead.end(); it++)
+			{
+				if(!it->serialize(f))
+				{ error= strerror(errno); fclose(f); return false; }
+			}
+			fclose(f);
+			return true;
+		}
+		
+		// load graph from a dump file
+		bool deserialize(const char *filename, std::string& error)
+		{
+			FILE *f= fopen(filename, "r");
+			if(!f) { error= strerror(errno); return false; }
+			char id[100];
+			if(fscanf(f, "%99s\n", id)!=1 || strcmp(id, DIGRAPH_FILEDUMP_ID)!=0)
+			{ error= _("could not read matching file format id"); fclose(f); return false; }
+			size_t newsize;
+			if(fscanf(f, "%zu\n", &newsize)!=1)
+			{ error= strerror(errno); fclose(f); return false; }
+			clear();
+			size_t i;
+			arc a;
+			for(i= 0; i<newsize; i++)
+			{
+				if(!a.deserialize(f))
+				{ error= strerror(errno); fclose(f); resort(); return false; }
+				addArc(a, false);
+			}
+			resort();
+			fclose(f);
+			return true;
+		}
 
         // add an arc to the graph
         void addArc(arc a, bool doSort= true)
         {
-            arcContainer::iterator lb= lower_bound(arcsByHead.begin(), arcsByHead.begin()+sortedSize, a, compByHead);
+            ArcContainerIterator lb= lower_bound(arcsByHead.begin(), arcsByHead.begin()+sortedSize, a, compByHead);
             if(lb!=arcsByHead.begin()+sortedSize && *lb==a) return;
             arcsByHead.push_back(a);
             arcsByTail.push_back(a);
@@ -243,14 +309,14 @@ class Digraph
         // does this node have any predecessors?
         bool hasPredecessor(uint32_t node)
         {
-            arcContainer::iterator it= findArcByHead(node);
+            ArcContainerIterator it= findArcByHead(node);
             return (it!=arcsByHead.end() && it->head==node);
         }
 
         // does this node have any descendants?
         bool hasDescendant(uint32_t node)
         {
-            arcContainer::iterator it= findArcByTail(node);
+            ArcContainerIterator it= findArcByTail(node);
             return (it!=arcsByTail.end() && it->tail==node);
         }
 
@@ -275,7 +341,7 @@ class Digraph
         // find all roots/leaves in this graph
         void findRoots(vector<uint32_t> &result)
         {
-            arcContainer::iterator it= arcsByTail.begin();
+            ArcContainerIterator it= arcsByTail.begin();
             while(it!=arcsByTail.end())
             {
                 uint32_t node= it->tail;
@@ -286,7 +352,7 @@ class Digraph
 
         void findLeaves(vector<uint32_t> &result)
         {
-            arcContainer::iterator it= arcsByHead.begin();
+            ArcContainerIterator it= arcsByHead.begin();
             while(it!=arcsByHead.end())
             {
                 uint32_t node= it->head;
@@ -299,7 +365,7 @@ class Digraph
         // erase an arc from the graph
         bool eraseArc(uint32_t tail, uint32_t head)
         {
-            arcContainer::iterator it;
+            ArcContainerIterator it;
             arc value= arc(tail, head);
             bool found= false;
 
@@ -331,9 +397,9 @@ class Digraph
             // we can't just mark the arcs with a special value here (such as the highest possible 
             // integer for both tail and head) because that would break the container's ordering.
             // so, we first queue the indices of arcs to be removed.
-            auto findArc= [&](arcContainer& arcs, bool(*compFn)(arc,arc)) -> ssize_t
+            auto findArc= [&](ArcContainer& arcs, bool(*compFn)(arc,arc)) -> ssize_t
             {
-                arcContainer::iterator it= lower_bound(arcs.begin(), arcs.end(), 
+                ArcContainerIterator it= lower_bound(arcs.begin(), arcs.end(), 
                     value, compFn);
                 if( it!=arcs.end() && *it==value )
                     return it-arcs.begin();
@@ -352,7 +418,7 @@ class Digraph
         int removeQueuedArcs()
         {
             arc markVal(arc::NODE_MAX, arc::NODE_MAX);
-            auto mark= [&](arcContainer& arcs, deque<size_t>& q) -> size_t
+            auto mark= [&](ArcContainer& arcs, deque<size_t>& q) -> size_t
             {
                 size_t minIdx= arcs.size();
                 while(q.size())
@@ -386,7 +452,7 @@ class Digraph
             NeighborIterator it(*this);
             if(successors) it.startDescendants(node);
             else it.startPredecessors(node);
-            arcContainer oldArcs;
+            ArcContainer oldArcs;
 
             // remove old neighbors of node
             while(!it.checkFinished())
@@ -394,7 +460,7 @@ class Digraph
                 oldArcs.push_back(it.getArc());
                 ++it;
             }
-            for(arcContainer::iterator i= oldArcs.begin(); i!=oldArcs.end(); i++)
+            for(ArcContainerIterator i= oldArcs.begin(); i!=oldArcs.end(); i++)
 #ifndef REPLACENEIGHBORS_MARKRM
                 eraseArc(i->tail, i->head);
 #else
@@ -444,7 +510,7 @@ class Digraph
                 // remove the rest
                 for(; !it.checkFinished(); )
                 {
-                    arcContainer::iterator f=
+                    ArcContainerIterator f=
                         (successors? lower_bound(arcsByHead.begin(), arcsByHead.end(), it.getArc(), compByHead):
                                      lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail));
                     fprintf(stderr, "removing arc %u,%u\n", f->tail,f->head);
@@ -601,12 +667,15 @@ class Digraph
             for(uint32_t i= start; i<end && i<arcsByTail.size(); i++)
                 fprintf(outFile, "%d, %d\n", arcsByTail[i].tail, arcsByTail[i].head);
         }
+		
+		
 
 
     protected:
-        typedef deque< arc > arcContainer;
-//        typedef vector< arc > arcContainer;
-        arcContainer arcsByTail, arcsByHead;
+        typedef deque< arc > ArcContainer;
+		typedef typename ArcContainer::iterator ArcContainerIterator;
+//        typedef vector< arc > ArcContainer;
+        ArcContainer arcsByTail, arcsByHead;
         
         // indices into above containers of arcs queued for removal.
         deque<size_t> arcRemovalQueueBH, arcRemovalQueueBT;
@@ -617,7 +686,7 @@ class Digraph
         class NeighborIterator
         {
             private:
-                arcContainer::iterator it;
+                ArcContainerIterator it;
                 bool byHead, switchToDescendants;
                 Digraph &graph;
                 uint32_t startNode;
@@ -717,7 +786,7 @@ class Digraph
                     return *it;
                 }
 
-                arcContainer::iterator getIterator()
+                ArcContainerIterator getIterator()
                 {
                     return it;
                 }
@@ -737,14 +806,14 @@ class Digraph
         }
 
         // find the position of first arc with given head (lower bound)
-        arcContainer::iterator findArcByHead(uint32_t head)
+        ArcContainerIterator findArcByHead(uint32_t head)
         {
             arc value(0, head);
             return lower_bound(arcsByHead.begin(), arcsByHead.end(), value, compByHead);
         }
 
         // find the position of first arc with given tail (lower bound)
-        arcContainer::iterator findArcByTail(uint32_t tail)
+        ArcContainerIterator findArcByTail(uint32_t tail)
         {
             arc value(tail, 0);
             return lower_bound(arcsByTail.begin(), arcsByTail.end(), value, compByTail);
@@ -752,7 +821,7 @@ class Digraph
 
         struct sorterThreadArg
         {
-            arcContainer& arcs;
+            ArcContainer& arcs;
             size_t begin, mergeBegin, end;
             bool (*compFunc)(arc a, arc b);
         };
@@ -773,7 +842,7 @@ class Digraph
             pthread_join(threadID, 0);
         }
         
-        static void moveToEnd(arcContainer& arcs, int a, int end)
+        static void moveToEnd(ArcContainer& arcs, int a, int end)
         {
             for(int i= a; i+1<end; i++)
                 std::swap(arcs.begin()[i], arcs.begin()[i+1]); 
@@ -781,7 +850,7 @@ class Digraph
 
         // helper function: merge & resort
         // also removes duplicates in the given range
-        static void doMerge(arcContainer &arcs, int begin, int mergeBegin, int end,
+        static void doMerge(ArcContainer &arcs, int begin, int mergeBegin, int end,
                             bool (*compFunc)(arc a, arc b))
         {
             stable_sort(arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
@@ -826,7 +895,7 @@ class Digraph
         
         friend class ccRMStuff; // can read arc data directly for debugging.
 };
-
+typedef Digraph<BasicArc> BDigraph;
 
 
 
@@ -855,7 +924,7 @@ class CliCommand_RTVoid: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_NONE; }
-        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)= 0;
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)= 0;
 };
 
 // cli commands which return a node list data set.
@@ -863,7 +932,7 @@ class CliCommand_RTNodeList: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_NODE_LIST; }
-        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                              vector<uint32_t> &result)= 0;
 };
 
@@ -872,8 +941,8 @@ class CliCommand_RTArcList: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_ARC_LIST; }
-        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
-                                      vector<Digraph::arc> &result)= 0;
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+                                      vector<BasicArc> &result)= 0;
 };
 
 // cli commands which return some other data set. execute() must print the result to outFile.
@@ -881,7 +950,7 @@ class CliCommand_RTOther: public CoreCliCommand
 {
     public:
         ReturnType getReturnType() { return RT_OTHER; }
-        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)= 0;
+        virtual CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)= 0;
 };
 
 
@@ -892,7 +961,7 @@ class CoreCli: public Cli
         typedef unordered_map<string, string> MetaMap;
         MetaMap meta;
     
-        CoreCli(Digraph *g);
+        CoreCli(BDigraph *g);
 
         // read and execute commands from stdin until eof or quit command
         void run()
@@ -945,7 +1014,7 @@ class CoreCli: public Cli
 
 
     protected:
-        Digraph *myGraph;
+        BDigraph *myGraph;
 
         bool doQuit;
 
@@ -979,7 +1048,7 @@ class CoreCli: public Cli
                     cout << FAIL_STR << " " << _("operators not available for this return type.") << endl;
                     return CMD_FAILURE;
                 }
-                CommandStatus status;
+                CommandStatus status= CMD_SUCCESS;
                 switch(cmd->getReturnType())
                 {
                     case CliCommand::RT_NODE_LIST:
@@ -1052,7 +1121,7 @@ class CoreCli: public Cli
                     }
                     case CliCommand::RT_ARC_LIST:
                     {
-                        vector<Digraph::arc> result;
+                        vector<BasicArc> result;
                         status= ((CliCommand_RTArcList*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile, result);
                         cout << cmd->getStatusMessage();
                         if(status==CMD_SUCCESS)
@@ -1092,7 +1161,7 @@ class CoreCli: public Cli
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccListNeighbors
 // template class for list-* commands
-template<Digraph::NodeRelation searchType, bool recursive>
+template<BDigraph::NodeRelation searchType, bool recursive>
     class ccListNeighbors: public CliCommand_RTNodeList
 {
     public:
@@ -1101,19 +1170,19 @@ template<Digraph::NodeRelation searchType, bool recursive>
         {
             if(recursive) switch(searchType)
             {
-                case Digraph::NEIGHBORS: return _("list NODE and its neighbors recursively up to DEPTH.");
-                case Digraph::PREDECESSORS: return _("list NODE and its predecessors recursively up to DEPTH.");
-                case Digraph::DESCENDANTS: return _("list NODE and its successors recursively up to DEPTH.");
+                case BDigraph::NEIGHBORS: return _("list NODE and its neighbors recursively up to DEPTH.");
+                case BDigraph::PREDECESSORS: return _("list NODE and its predecessors recursively up to DEPTH.");
+                case BDigraph::DESCENDANTS: return _("list NODE and its successors recursively up to DEPTH.");
             }
             else switch(searchType)
             {
-                case Digraph::NEIGHBORS: return _("list direct neighbors of NODE.");
-                case Digraph::PREDECESSORS: return _("list direct predecessors of NODE.");
-                case Digraph::DESCENDANTS: return _("list direct successors of NODE.");
+                case BDigraph::NEIGHBORS: return _("list direct neighbors of NODE.");
+                case BDigraph::PREDECESSORS: return _("list direct predecessors of NODE.");
+                case BDigraph::DESCENDANTS: return _("list direct successors of NODE.");
             }
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                      vector<uint32_t> &result)
         {
             if( (words.size()!=(recursive? 3: 2)) || hasDataSet ||
@@ -1124,8 +1193,8 @@ template<Digraph::NodeRelation searchType, bool recursive>
             }
             double d= getTime();
             #if 1
-            map<uint32_t,Digraph::BFSnode> nodeInfo;
-            graph->doBFS2<Digraph::findAll> (Cli::parseUint(words[1]), 0, (recursive? Cli::parseUint(words[2]): 1),
+            map<uint32_t,BDigraph::BFSnode> nodeInfo;
+            graph->doBFS2<BDigraph::findAll> (Cli::parseUint(words[1]), 0, (recursive? Cli::parseUint(words[2]): 1),
                                              result, nodeInfo, searchType);
             #else
             map<uint32_t,uint32_t> nodeNiveau;
@@ -1164,7 +1233,7 @@ template<bool leaves>
                 return _("list root nodes (nodes without predecessors).");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
                      vector<uint32_t> &result)
         {
             if( words.size()!=1 || hasDataSet )
@@ -1198,7 +1267,7 @@ class ccHelp: public CliCommand_RTOther
                                              getName() + _(" COMMAND: get help on COMMAND") + "\n# " +
                                              getName() + _(" operators: print help on operators"); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if(words.size()>2 || hasDataSet)
             {
@@ -1272,26 +1341,26 @@ class ccStats: public CliCommand_RTOther
         {
             string s= string(_("print some statistics about the graph in the form of a name,value data set.\n")) +
                       "# " + _("names and their meanings:");
-            Digraph graph;
-            map<string, Digraph::statInfo> info;
+            BDigraph graph;
+            map<string, BDigraph::statInfo> info;
             graph.getStats(info);
-            for(map<string, Digraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
+            for(map<string, BDigraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
                 s+= "\n# " + i->first + "\t" + i->second.description;
             return s;
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if(words.size()!=1 || hasDataSet)
             {
                 syntaxError();
                 return CMD_FAILURE;
             }
-            map<string, Digraph::statInfo> info;
+            map<string, BDigraph::statInfo> info;
             graph->getStats(info);
             cliSuccess("%s\n", outFile==stdout? ":": "");
             cout << lastStatusMessage;
-            for(map<string, Digraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
+            for(map<string, BDigraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
                 fprintf(outFile, "%s,%zu\n", i->first.c_str(), i->second.value);
             fprintf(outFile, "\n");
             fflush(outFile);
@@ -1309,7 +1378,7 @@ class ccAddArcs: public CliCommand_RTVoid
         string getSynopsis()        { return getName() + " {:|<}"; }
         string getHelpText()        { return _("read a data set of arcs and add them to the graph. empty line terminates the set."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if(words.size()!=1 || !(hasDataSet||(inFile!=stdin)))
             {
@@ -1371,7 +1440,7 @@ class ccRemoveArcs: public CliCommand_RTVoid
         string getSynopsis()        { return getName() + " {:|<}"; }
         string getHelpText()        { return _("read a data set of arcs and remove them from the graph. empty line terminates the set."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=1 || !(hasDataSet||(inFile!=stdin)) )
             {
@@ -1401,7 +1470,7 @@ class ccRemoveArcs: public CliCommand_RTVoid
 ///////////////////////////////////////////////////////////////////////////////////////////
 // ccReplaceNeighbors
 // replace-predecessors/replace-successors commands
-template<Digraph::NodeRelation searchType>
+template<BDigraph::NodeRelation searchType>
     class ccReplaceNeighbors: public CliCommand_RTVoid
 {
     public:
@@ -1410,13 +1479,13 @@ template<Digraph::NodeRelation searchType>
         {
             switch(searchType)
             {
-                case Digraph::PREDECESSORS: return _("read data set of nodes and replace predecessors of NODE with given set.");
-                case Digraph::DESCENDANTS: return _("read data set of nodes and replace successors of NODE with given set.");
+                case BDigraph::PREDECESSORS: return _("read data set of nodes and replace predecessors of NODE with given set.");
+                case BDigraph::DESCENDANTS: return _("read data set of nodes and replace successors of NODE with given set.");
                 default:    ;
             }
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=2 || !(hasDataSet||(inFile!=stdin)) ||
                 !Cli::isValidNodeID(words[1]) )
@@ -1435,14 +1504,14 @@ template<Digraph::NodeRelation searchType>
                 newNeighbors.push_back((*i)[0]);
 
             if(graph->replaceNeighbors(Cli::parseUint(words[1]), newNeighbors, 
-                                        searchType==Digraph::DESCENDANTS))
+                                        searchType==BDigraph::DESCENDANTS))
             {
                 cliSuccess("\n");
                 return CMD_SUCCESS;
             }
             else
             {
-                cliError(_("internal error: Digraph::replaceNeighbors() failed.\n"));
+                cliError(_("internal error: BDigraph::replaceNeighbors() failed.\n"));
                 return CMD_ERROR;
             }
         }
@@ -1458,7 +1527,7 @@ class ccClear: public CliCommand_RTVoid
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("clear the graph model."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=1 || hasDataSet || (inFile!=stdin) )
             {
@@ -1481,7 +1550,7 @@ class ccShutdown: public CliCommand_RTVoid
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("shutdown the graph processor."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if(words.size()!=1 || hasDataSet || (inFile!=stdin))
             {
@@ -1510,7 +1579,7 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                 return _("find the shortest path from node X to node Y. return data set of arcs representing the path.");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, vector<Digraph::arc> &result)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, vector<BasicArc> &result)
         {
             if( hasDataSet ||
                 (findRoot? (words.size()!=2):
@@ -1521,23 +1590,23 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                 return CMD_FAILURE;
             }
             vector<uint32_t> nodes;
-            map<uint32_t,Digraph::BFSnode> nodeInfo;
+            map<uint32_t,BDigraph::BFSnode> nodeInfo;
             uint32_t node;
 
             if(findRoot)
-                node= graph->doBFS2<Digraph::findRoot> (Cli::parseUint(words[1]), 0, U32MAX,
+                node= graph->doBFS2<BDigraph::findRoot> (Cli::parseUint(words[1]), 0, U32MAX,
                                                         nodes, nodeInfo);
             else
-                node= graph->doBFS2<Digraph::findNode> (Cli::parseUint(words[2]), Cli::parseUint(words[1]), U32MAX,
+                node= graph->doBFS2<BDigraph::findNode> (Cli::parseUint(words[2]), Cli::parseUint(words[1]), U32MAX,
                                                         nodes, nodeInfo);
             if(node)
             {
                 uint32_t next;
                 result.resize(nodeInfo[node].niveau);
-                vector<Digraph::arc>::iterator it= result.begin();
+                vector<BasicArc>::iterator it= result.begin();
                 while((next= nodeInfo[node].pathNext))
                 {
-                    *it++= Digraph::arc(node, next);
+                    *it++= BasicArc(node, next);
                     node= next;
                 }
                 cliSuccess(_("%zu nodes visited, path length %zu%s\n"), nodes.size(), result.size(),
@@ -1564,7 +1633,7 @@ template<bool byHead> class ccListArcs: public CliCommand_RTOther
             return _("debugging: list N arcs starting from INDEX, ") + string(byHead? "sorted by head": "sorted by tail");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if( hasDataSet ||
                 (words.size()==3 && !Cli::isValidUint(words[2])) ||
@@ -1604,7 +1673,7 @@ class ccAddStuff: public CliCommand_RTVoid
             return _("debugging: add NUM random arcs with tail,head in range 1..MOD directly to the graph");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, 
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, 
                                 bool hasDataSet, FILE *inFile)
         {
             if( hasDataSet ||
@@ -1647,7 +1716,7 @@ class ccRMStuff: public CliCommand_RTVoid
             return _("debugging: remove NUM random arcs directly from the graph");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, 
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, 
                                 bool hasDataSet, FILE *inFile)
         {
             if( hasDataSet ||
@@ -1660,7 +1729,7 @@ class ccRMStuff: public CliCommand_RTVoid
 
             uint32_t num= Cli::parseUint(words[1]);
             
-            deque<Digraph::arc> rmQueue;
+            deque<BasicArc> rmQueue;
 
             double tStart= getTime();
             uint32_t oldSize= graph->size();
@@ -1674,7 +1743,7 @@ class ccRMStuff: public CliCommand_RTVoid
                 }
                 while(rmQueue.size())
                 {
-                    Digraph::arc& a= rmQueue.front();
+                    BasicArc& a= rmQueue.front();
                     rmQueue.pop_front();
 #ifdef REMOVEARCS_MARKRM
                     graph->queueArcForRemoval(a.tail, a.head);
@@ -1704,7 +1773,7 @@ class ccMallocStats: public CliCommand_RTOther
             return _("debugging");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if( hasDataSet || words.size()!=1 )
             {
@@ -1740,7 +1809,7 @@ class ccProtocolVersion: public CliCommand_RTVoid
             return _("print PROTOCOL_VERSION. for internal use only.");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( hasDataSet ||
                 words.size()!=1 )
@@ -1786,7 +1855,7 @@ class ccSetMeta: public CliCommand_RTVoid
                 "# variable names may contain alphabetic characters (a-z A-Z), digits (0-9), hyphens (-) and underscores (_),\n"
                 "# and must start with an alphabetic character, a hyphen or an underscore."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=3 || hasDataSet || (inFile!=stdin) )
             {
@@ -1819,7 +1888,7 @@ class ccGetMeta: public CliCommand_RTVoid
         string getSynopsis()        { return getName() + " NAME"; }
         string getHelpText()        { return _("read a named text variable."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=2 || hasDataSet || inFile!=stdin )
             {
@@ -1850,7 +1919,7 @@ class ccRemoveMeta: public CliCommand_RTVoid
         string getSynopsis()        { return getName() + " NAME"; }
         string getHelpText()        { return _("remove the named variable."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
         {
             if( words.size()!=2 || hasDataSet || inFile!=stdin )
             {
@@ -1881,7 +1950,7 @@ class ccListMeta: public CliCommand_RTOther
         string getSynopsis()        { return getName(); }
         string getHelpText()        { return _("list all variables in this graph."); }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, Digraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
             if( words.size()!=1 || hasDataSet || inFile!=stdin )
             {
@@ -1910,10 +1979,74 @@ class ccListMeta: public CliCommand_RTOther
 };
 
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccDumpGraph
+// save the graph to a file.
+class ccDumpGraph: public CliCommand_RTVoid
+{
+    public:
+        string getSynopsis()        { return getName() + " FILENAME"; }
+        string getHelpText()        { return _("save the graph to a file."); }
+
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if( words.size()!=2 || hasDataSet || inFile!=stdin )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+			
+			string error;
+			if(!graph->serialize(words[1].c_str(), error))
+			{
+				cliFailure("'%s'\n", error.c_str());
+				return CMD_FAILURE;
+			}
+
+            cliSuccess("\n");
+            
+            return CMD_SUCCESS;
+        }
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccLoadGraph
+// load graph from a dump file.
+class ccLoadGraph: public CliCommand_RTVoid
+{
+    public:
+        string getSynopsis()        { return getName() + " FILENAME"; }
+        string getHelpText()        { return _("load graph from a dump file."); }
+
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile)
+        {
+            if( words.size()!=2 || hasDataSet || inFile!=stdin )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+
+			string error;
+			if(!graph->deserialize(words[1].c_str(), error))
+			{
+				cliFailure("'%s'\n", error.c_str());
+				return CMD_FAILURE;
+			}
+
+            cliSuccess("\n");
+            
+            return CMD_SUCCESS;
+        }
+};
 
 
 
-CoreCli::CoreCli(Digraph *g): myGraph(g), doQuit(false)
+
+
+
+
+CoreCli::CoreCli(BDigraph *g): myGraph(g), doQuit(false)
 {
 #define CORECOMMANDS_BEGIN
 #define CORECOMMANDS_END
@@ -1936,7 +2069,7 @@ int main()
     bindtextdomain("graphcore", "./messages");
     textdomain("graphcore");
 
-    Digraph graph;
+    BDigraph graph;
     CoreCli cli(&graph);
 
     cli.run();

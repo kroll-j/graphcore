@@ -25,13 +25,13 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("help",                 ACCESS_READ,    ccHelp(this));
     CORECOMMAND("add-arcs",             ACCESS_WRITE,   ccAddArcs());
     CORECOMMAND("remove-arcs",          ACCESS_WRITE,   ccRemoveArcs());
-    CORECOMMAND("replace-predecessors", ACCESS_WRITE,   ccReplaceNeighbors<Digraph::PREDECESSORS>());
-    CORECOMMAND("replace-successors",   ACCESS_WRITE,   ccReplaceNeighbors<Digraph::DESCENDANTS>());
-    CORECOMMAND("traverse-predecessors",ACCESS_READ,    ccListNeighbors<Digraph::PREDECESSORS, true>());
-    CORECOMMAND("traverse-successors",  ACCESS_READ,    ccListNeighbors<Digraph::DESCENDANTS, true>());
-    CORECOMMAND("traverse-neighbors",   ACCESS_READ,    ccListNeighbors<Digraph::NEIGHBORS, true>());
-    CORECOMMAND("list-predecessors",    ACCESS_READ,    ccListNeighbors<Digraph::PREDECESSORS, false>());
-    CORECOMMAND("list-successors",      ACCESS_READ,    ccListNeighbors<Digraph::DESCENDANTS, false>());
+    CORECOMMAND("replace-predecessors", ACCESS_WRITE,   ccReplaceNeighbors<BDigraph::PREDECESSORS>());
+    CORECOMMAND("replace-successors",   ACCESS_WRITE,   ccReplaceNeighbors<BDigraph::DESCENDANTS>());
+    CORECOMMAND("traverse-predecessors",ACCESS_READ,    ccListNeighbors<BDigraph::PREDECESSORS, true>());
+    CORECOMMAND("traverse-successors",  ACCESS_READ,    ccListNeighbors<BDigraph::DESCENDANTS, true>());
+    CORECOMMAND("traverse-neighbors",   ACCESS_READ,    ccListNeighbors<BDigraph::NEIGHBORS, true>());
+    CORECOMMAND("list-predecessors",    ACCESS_READ,    ccListNeighbors<BDigraph::PREDECESSORS, false>());
+    CORECOMMAND("list-successors",      ACCESS_READ,    ccListNeighbors<BDigraph::DESCENDANTS, false>());
     CORECOMMAND("find-path",            ACCESS_READ,    ccFindPath<false>());
     CORECOMMAND("find-root",            ACCESS_READ,    ccFindPath<true>());
     CORECOMMAND("list-roots",           ACCESS_READ,    ccListNeighborless<false>());
@@ -56,6 +56,9 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("get-meta",             ACCESS_READ,    ccGetMeta());
     CORECOMMAND("remove-meta",          ACCESS_WRITE,   ccRemoveMeta());
     CORECOMMAND("list-meta",            ACCESS_READ,    ccListMeta());
+    
+    CORECOMMAND("dump-graph",      		ACCESS_ADMIN,   ccDumpGraph());
+    CORECOMMAND("load-graph",           ACCESS_ADMIN,   ccLoadGraph());
  
 CORECOMMANDS_END
 
