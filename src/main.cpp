@@ -1411,6 +1411,7 @@ class ccAddArcs: public CliCommand_RTVoid
             vector<uint32_t> record;
             bool ok= true;
             cliSuccess("\n");
+/*
             for(unsigned lineno= 1; ; lineno++)
             {
                 record.clear();
@@ -1435,6 +1436,37 @@ class ccAddArcs: public CliCommand_RTVoid
                 {
                     if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
                     if(ok) graph->addArc(record[0], record[1], false);
+                }
+            }
+*/
+            for(unsigned lineno= 1; ; lineno++)
+            {
+                record.clear();
+                try
+                {
+                    Cli::readNodeIDRecord(inFile, record);
+                    if(record.size()==0)
+                    {
+                        if(!ok) return CMD_ERROR;
+                        graph->resort(oldSize);
+                        cliSuccess("\n");
+                        return CMD_SUCCESS;
+                    }
+                    else if(record.size()!=2)
+                    {
+                        if(ok) cliError(_("error reading data set: record size %d, should be 2. (line %u)\n"), record.size(), lineno);
+                        ok= false;
+                    }
+                    else
+                    {
+                        if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
+                        if(ok) graph->addArc(record[0], record[1], false);
+                    }
+                }
+                catch(exception& e)
+                {
+                    if(ok) cliError(_("error reading data set: '%s' in line %u\n"), e.what().c_str(), lineno);
+                    ok= false;
                 }
             }
         }
