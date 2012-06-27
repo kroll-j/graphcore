@@ -1406,7 +1406,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 record.clear();
                 if( !Cli::readNodeIDRecord(inFile, record) )
                 {
-                    if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
+                    if(ok) cliError(_("error reading data set. strerror(): '%s' (line %u)\n"), strerror(errno), lineno);
                     ok= false;
                 }
                 else if(record.size()==0)
@@ -1418,7 +1418,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 }
                 else if(record.size()!=2)
                 {
-                    if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
+                    if(ok) cliError(_("error reading data set: record size %d, should be 2. (line %u)\n"), record.size(), lineno);
                     ok= false;
                 }
                 else
