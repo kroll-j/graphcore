@@ -1444,7 +1444,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 record.clear();
                 try
                 {
-                    Cli::readNodeIDRecord(inFile, record);
+                    Cli::readNodeIDRecord(inFile, record); 
                     if(record.size()==0)
                     {
                         if(!ok) return CMD_ERROR;
