@@ -1465,7 +1465,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 }
                 catch(exception& e)
                 {
-                    if(ok) cliError(_("error reading data set: '%s' in line %u\n"), e.what().c_str(), lineno);
+                    if(ok) cliError(_("error reading data set: '%s' in line %u\n"), e.what(), lineno);
                     ok= false;
                 }
             }
