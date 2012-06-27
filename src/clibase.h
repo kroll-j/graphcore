@@ -155,14 +155,15 @@ class Cli
         }
 
         // parse a data record in text form, check for valid uints
-        static bool readUintRecord(FILE *f, vector<uint32_t> &ret)
+        // throws runtime_error
+        static void readUintRecord(FILE *f, vector<uint32_t> &ret)
         {
             char line[1024]; 
             uint32_t n;
             if(fgets(line, 1024, f)==0)
             {
                 if(!feof(f)) throw runtime_error( _("fgets failed: ") + string(strerror(errno)) );    //return false;
-                else return true;
+                else return;
             }
             filterNewlines(line);    // filter out any CRLFs
             if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;    // chomp line buffer.
@@ -175,16 +176,16 @@ class Cli
                 if(!isValidUint(strings[i])) throw runtime_error( strings[i] + _(" is not a uint") ); //return false;
                 ret.push_back(parseUint(strings[i]));
             }
-            return true;
+            return;
         }
 
         // like readUintRecord(), and also check that integers are in valid range for node IDs (currently 1..uint32_max)
-        static bool readNodeIDRecord(FILE *f, vector<uint32_t> &ret)
+        // throws runtime_error
+        static void readNodeIDRecord(FILE *f, vector<uint32_t> &ret)
         {
-            if(!readUintRecord(f, ret)) return false;
+            readUintRecord(f, ret);
             for(vector<uint32_t>::iterator i= ret.begin(); i!=ret.end(); i++)
                 if(*i==0) throw runtime_error(_("node IDs must be non-zero")); //return false;
-            return true;
         }
 
         // split a string into words using given delimiters
@@ -271,25 +272,29 @@ inline bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &da
     for(unsigned lineno= 1; ; lineno++)
     {
         record.clear();
-        if( !Cli::readNodeIDRecord(inFile, record) )
+        try
+        {
+            Cli::readNodeIDRecord(inFile, record);
+            if(record.size()==0)
+            {
+                return ok;
+            }
+            else if(record.size()!=expectedSize)
+            {
+                if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
+                ok= false;
+            }
+            else
+            {
+                // unnecessary leftover, now done in readNodeIDRecord.
+    //            if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
+                if(ok) dataset.push_back(record);
+            }
+        }
+        catch(exception& e)
         {
             if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
             ok= false;
-        }
-        else if(record.size()==0)
-        {
-            return ok;
-        }
-        else if(record.size()!=expectedSize)
-        {
-            if(ok) cliError(_("error reading data set (line %u)\n"), lineno);
-            ok= false;
-        }
-        else
-        {
-            // unnecessary leftover, now done in readNodeIDRecord.
-//            if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
-            if(ok) dataset.push_back(record);
         }
     }
 }
