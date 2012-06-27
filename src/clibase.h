@@ -157,7 +157,7 @@ class Cli
         // parse a data record in text form, check for valid uints
         static bool readUintRecord(FILE *f, vector<uint32_t> &ret)
         {
-            char line[1024];
+            char line[1024]; 
             uint32_t n;
             if(fgets(line, 1024, f)==0)
             {
