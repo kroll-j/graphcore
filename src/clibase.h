@@ -161,18 +161,18 @@ class Cli
             uint32_t n;
             if(fgets(line, 1024, f)==0)
             {
-                if(!feof(f)) return false;
+                if(!feof(f)) throw runtime_error( _("fgets failed: ") + string(strerror(errno)) );    //return false;
                 else return true;
             }
             filterNewlines(line);    // filter out any CRLFs
             if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;    // chomp line buffer.
             vector<string> strings= splitString(line);
             if(strlen(line) && !strings.size())
-                // a non-empty string with no words (i. e. entirely made up of delimiters) is illegal
-                return false;
+                throw runtime_error(_("a non-empty string with no words (i. e. entirely made up of delimiters) is illegal in an integer record"));
+                // return false;
             for(uint32_t i= 0; i<strings.size(); i++)
             {
-                if(!isValidUint(strings[i])) return false;
+                if(!isValidUint(strings[i])) throw runtime_error( strings[i] + _(" is not a uint") ); //return false;
                 ret.push_back(parseUint(strings[i]));
             }
             return true;
@@ -183,7 +183,7 @@ class Cli
         {
             if(!readUintRecord(f, ret)) return false;
             for(vector<uint32_t>::iterator i= ret.begin(); i!=ret.end(); i++)
-                if(*i==0) return false;
+                if(*i==0) throw runtime_error(_("node IDs must be non-zero")); //return false;
             return true;
         }
 

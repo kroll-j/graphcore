@@ -27,6 +27,8 @@
 #include <algorithm>
 #include <functional>
 #include <unordered_map>
+#include <exception>
+#include <stdexcept>
 
 #include <stdint.h>
 #include <sys/time.h>
@@ -1030,6 +1032,8 @@ class CoreCli: public Cli
         // inRedir/outRedir are non-null if input/output should be redirected.
         CommandStatus execute(char *command, bool hasDataSet, FILE *inRedir, FILE *outRedir)
         {
+            try
+            {
             vector<string> words= splitString(command);
             if(words.size()<1) return CMD_FAILURE;
 
@@ -1153,6 +1157,12 @@ class CoreCli: public Cli
             }
             printf("%s %s\n", FAIL_STR, _("no such command."));
             return CMD_FAILURE;
+            }
+            catch(exception& e)
+            {
+                printf("%s %s '%s'\n", ERROR_STR, _("caught exception:"), e.what());
+                return CMD_ERROR;
+            }
         }
 };
 
