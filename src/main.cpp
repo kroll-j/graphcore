@@ -46,7 +46,7 @@
 
 // calculate average successors/predecessors per node in the stats command. 
 // this takes a little long, so it's disabled.
-// #define AVGNEIGHBORS 
+// #define STATS_AVGNEIGHBORS 
 
 // in add-arcs, use mark+remove to remove duplicates from data set instead of erase(). fast.
 #define DUPCHECK_MARKRM
@@ -61,6 +61,15 @@
 #define REPLACENEIGHBORS_MARKRM
 
 
+// print debugging and other info to stderr. enable with make option STDERR_DEBUGGING=1.
+#ifdef STDERR_DEBUGGING
+#define dprint dodprint
+#else
+#define dprint
+#endif
+
+
+
 enum CommandStatus
 {
     CORECMDSTATUSCODES
@@ -72,6 +81,8 @@ enum CommandStatus
 #endif
 
 #define U32MAX (0xFFFFFFFF)
+
+typedef unordered_map<string, string> MetaMap;
 
 
 // time measurement
@@ -88,6 +99,13 @@ bool isInteractive()
     return isatty(STDOUT_FILENO) && isatty(STDIN_FILENO);
 }
 
+void dodprint(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+}
 
 struct BasicArc
 {
@@ -125,7 +143,7 @@ struct BasicArc
 	}
 };
 
-#define DIGRAPH_FILEDUMP_ID	"CatScanDump-01"
+#define DIGRAPH_FILEDUMP_ID	"GraphCoreDump-02"
 
 template<typename arc=BasicArc> class Digraph
 {
@@ -145,12 +163,17 @@ template<typename arc=BasicArc> class Digraph
 		// tail, head\n ...
 		
 		// dump the graph to a file.
-		bool serialize(const char *filename, std::string& error)
+		bool serialize(const MetaMap& metaVars, const char *filename, std::string& error)
 		{
 			FILE *f= fopen(filename, "w");
 			if(!f) { error= strerror(errno); return false; }
 			if(fprintf(f, "%s\n%u\n", DIGRAPH_FILEDUMP_ID, size())<0)
 			{ error= strerror(errno); fclose(f); return false; }
+			for(MetaMap::const_iterator it= metaVars.begin(); it!=metaVars.end(); it++)
+			{
+				if(fprintf(f, "META: %s = %s\n", it->first.c_str(), it->second.c_str())<0)
+				{ error= strerror(errno); fclose(f); return false; }
+			}
 			for(ArcContainerIterator it= arcsByHead.begin(); it!=arcsByHead.end(); it++)
 			{
 				if(!it->serialize(f))
@@ -161,7 +184,7 @@ template<typename arc=BasicArc> class Digraph
 		}
 		
 		// load graph from a dump file
-		bool deserialize(const char *filename, std::string& error)
+		bool deserialize(MetaMap& metaVars, const char *filename, std::string& error)
 		{
 			FILE *f= fopen(filename, "r");
 			if(!f) { error= strerror(errno); return false; }
@@ -171,6 +194,13 @@ template<typename arc=BasicArc> class Digraph
 			size_t newsize;
 			if(fscanf(f, "%zu\n", &newsize)!=1)
 			{ error= strerror(errno); fclose(f); return false; }
+			
+			metaVars.clear();
+			char metaName[64], metaVal[64];
+			while(fscanf(f, "META: %s = %s\n", metaName, metaVal)==2)
+				dprint("load meta: %s = %s\n", metaName,metaVal),
+				metaVars[metaName]= metaVal;
+			
 			clear();
 			size_t i;
 			arc a;
@@ -417,7 +447,7 @@ template<typename arc=BasicArc> class Digraph
             return true;
         }
         
-        int removeQueuedArcs()
+        int removeQueuedArcs(size_t minResortIdx= arc::NODE_MAX)
         {
             arc markVal(arc::NODE_MAX, arc::NODE_MAX);
             auto mark= [&](ArcContainer& arcs, deque<size_t>& q) -> size_t
@@ -435,11 +465,11 @@ template<typename arc=BasicArc> class Digraph
             
             size_t oldSize= size();
             // now mark all arcs queued for removal
-            size_t minIdx= mark(arcsByHead, arcRemovalQueueBH);
-            minIdx= min(minIdx, mark(arcsByTail, arcRemovalQueueBT));
+            minResortIdx= mark(arcsByHead, arcRemovalQueueBH);
+            minResortIdx= min(minResortIdx, mark(arcsByTail, arcRemovalQueueBT));
             // sort, so that marked arcs end up at containers' ends
             // only sort values from the smallest index of all removed arcs
-            resort(minIdx);
+            resort(minResortIdx);
             // resort also took care of removing all marked arcs because they are duplicates --
             // except the last one
             if(arcsByHead.size() && arcsByHead.back()==markVal) arcsByHead.pop_back();
@@ -447,7 +477,10 @@ template<typename arc=BasicArc> class Digraph
             sortedSize= size();
             return oldSize-size();
         }
-        
+	
+#define REPLACENEIGHBORSTEST1 1	// WiP
+
+#if OLDREPLACENEIGHBORS
         // replace predecessors (successors=false) or descendants (successors=true) of a node
         bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
         {
@@ -485,70 +518,103 @@ template<typename arc=BasicArc> class Digraph
             sortedSize= size();
             return true;
         }
+        
+#elif REPLACENEIGHBORSTEST1
 
-#if 0
-        // old broken method, don't use.
         // replace predecessors (successors=false) or descendants (successors=true) of a node
-        bool replaceNeighborsX(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
+        bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
         {
             NeighborIterator it(*this);
             if(successors) it.startDescendants(node);
             else it.startPredecessors(node);
-            stable_sort(newNeighbors.begin(), newNeighbors.end());
-            vector<uint32_t>::iterator p;
 
-            // replace arcs
-            for(p= newNeighbors.begin(); !it.finished() && p!=newNeighbors.end(); ++it, ++p)
+            // remove old neighbors of node
+            while(!it.checkFinished())
             {
-//                arc a(it.getArc());
-//                (successors? a.head: a.tail)= *p;
-//                // only replace the neighbor if it doesn't generate a duplicate
-//                if(!arcExists(a.tail, a.head)) *(it.getIterator())= a;
-                (successors? it.getArc().head: it.getArc().tail)= *p;
+                queueArcForRemoval(it.getArc().tail, it.getArc().head);
+                ++it;
             }
-            // if old neighbor list is larger than new one
-            if(!it.finished())
+            
+            removeQueuedArcs();
+
+            // add new neighbors and resort.
+            vector<uint32_t>::iterator p;
+            int oldSize= arcsByHead.size();
+            for(p= newNeighbors.begin(); p!= newNeighbors.end(); p++)
             {
-                // remove the rest
-                for(; !it.checkFinished(); )
-                {
-                    ArcContainerIterator f=
-                        (successors? lower_bound(arcsByHead.begin(), arcsByHead.end(), it.getArc(), compByHead):
-                                     lower_bound(arcsByTail.begin(), arcsByTail.end(), it.getArc(), compByTail));
-                    fprintf(stderr, "removing arc %u,%u\n", f->tail,f->head);
-                    if( f==(successors? arcsByHead.end(): arcsByTail.end()) || !(*f==it.getArc()) )
-                    {
-                        printf("successors=%s arcsByHead.size()=%d arcsByTail.size()=%d sortedSize=%d\n"
-                               "*f=%u,%u it.getArc()=%u,%u\n"
-                               ,
-                               successors? "true": "false", arcsByHead.size(), arcsByTail.size(), sortedSize,
-                               f->tail,f->head, it.getArc().tail,it.getArc().head);
-                        abort();    // XXX
-                        return false;
-                    }
-                    if(successors)
-                        arcsByTail.erase(it.getIterator()),
-                        arcsByHead.erase(f);
-                    else
-                        arcsByTail.erase(f),
-                        arcsByHead.erase(it.getIterator());
-                    sortedSize--;
-                }
+                if(successors) addArc(node, *p, false);
+                else addArc(*p, node, false);
             }
-            // if new neighbor list is larger than old one
-            else if(p!=newNeighbors.end())
-            {
-                // add new ones and resort
-                int oldSize= arcsByHead.size();
-                for(; p!=newNeighbors.end(); p++)
-                    if(successors) addArc(node, *p, false);
-                    else addArc(*p, node, false);
-                resort(oldSize);
-            }
+            resort(oldSize);
             sortedSize= size();
             return true;
+            
+            // todo:
+            // replace neighbors in-place without removing first, appending and removing the rest as necessary
+            // possible?
+            // todo: 
+            // manage sorter threads better
+        }
+
+#else 
+
+        // replace predecessors (successors=false) or descendants (successors=true) of a node
+        bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
+        {
+            NeighborIterator it(*this);
+            if(successors) it.startDescendants(node);
+            else it.startPredecessors(node);
+            
+            struct indices { uint32_t bytail; uint32_t byhead; };
+            deque< indices > oldIndices;
+
+            while(!it.checkFinished())
+            {
+                //~ queueArcForRemoval(it.getArc().tail, it.getArc().head);
+                // todo: get internal index from NeighborIterator
+                uint32_t tail= findArcByTail(it.getArc().tail)-arcsByTail.begin(), 
+                         head= findArcByHead(it.getArc().head)-arcsByHead.begin();
+                oldIndices.push_back( indices { tail, head } );
+                ++it;
+            }
+            
+            // while oldIndices and newNeighbors left:
+            //  replace oldIndices front with newNeighbors[i]
+            //  oldIndices.pop_front()
+            //  i++
+            
+            // case: more new neighbors than old
+            // while newNeighbors left:
+            //  append newNeighbors[i]
+            //  i++
+            
+            // case: less new neighbors than old
+            // while oldIndices left:
+            //  queueArcForRemoval(oldIndices front)
+            //  oldIndices.pop_front()
+            // 
+            // removeQueuedArcs() -- does resorting - but uses wrong min idx!!
+            
+            //~ removeQueuedArcs();
+
+            // add new neighbors and resort.
+            vector<uint32_t>::iterator p;
+            int oldSize= arcsByHead.size();
+            for(p= newNeighbors.begin(); p!= newNeighbors.end(); p++)
+            {
+                if(successors) addArc(node, *p, false);
+                else addArc(*p, node, false);
+            }
+            resort(oldSize);
+            sortedSize= size();
+            return true;
+            
+            // todo:
+            // replace neighbors in-place without removing first, appending and removing the rest as necessary
+            // possible?
         }
 #endif
+
 
         struct statInfo
         {
@@ -572,7 +638,7 @@ template<typename arc=BasicArc> class Digraph
             }
             uint32_t numDups= 0;
             uint32_t minNodeID= U32MAX, maxNodeID= 0;
-#ifdef AVGNEIGHBORS // calculate average successors/predecessors per node. this takes a little long.
+#ifdef STATS_AVGNEIGHBORS // calculate average successors/predecessors per node. this takes a little long.
             map<uint32_t,uint32_t> totalPredecessors;
             map<uint32_t,uint32_t> totalSuccessors;
 #endif
@@ -585,13 +651,13 @@ template<typename arc=BasicArc> class Digraph
                 if(h.head && h.head<minNodeID) minNodeID= h.head;
                 if(h.tail>maxNodeID) maxNodeID= h.tail;
                 if(h.head>maxNodeID) maxNodeID= h.head;
-#ifdef AVGNEIGHBORS
+#ifdef STATS_AVGNEIGHBORS
                 totalPredecessors[h.head]++;
                 totalSuccessors[h.tail]++;
 #endif
             }
 
-#ifdef AVGNEIGHBORS
+#ifdef STATS_AVGNEIGHBORS
             size_t s= 0;
             for(map<uint32_t,uint32_t>::iterator it= totalPredecessors.begin(); it!=totalPredecessors.end(); it++)
                 s+= it->second;
@@ -960,7 +1026,6 @@ class CliCommand_RTOther: public CoreCliCommand
 class CoreCli: public Cli
 {
     public:
-        typedef unordered_map<string, string> MetaMap;
         MetaMap meta;
     
         CoreCli(BDigraph *g);
@@ -1454,7 +1519,7 @@ class ccAddArcs: public CliCommand_RTVoid
                     }
                     else if(record.size()!=2)
                     {
-                        if(ok) cliError(_("error reading data set: record size %d, should be 2. (line %u)\n"), record.size(), lineno);
+                        if(ok) cliError(_("error reading data set: record size %zu, should be 2. (line %u)\n"), record.size(), lineno);
                         ok= false;
                     }
                     else
@@ -1536,6 +1601,10 @@ template<BDigraph::NodeRelation searchType>
                 return CMD_FAILURE;
             }
 
+			dprint("%s %s", getName().c_str(), words[1].c_str());
+			
+			double tStart= getTime();
+			
             vector<uint32_t> newNeighbors;
             vector< vector<uint32_t> > dataset;
 
@@ -1544,10 +1613,15 @@ template<BDigraph::NodeRelation searchType>
             newNeighbors.reserve(dataset.size());
             for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
                 newNeighbors.push_back((*i)[0]);
+			
+			double tRead= getTime();
 
             if(graph->replaceNeighbors(Cli::parseUint(words[1]), newNeighbors, 
                                         searchType==BDigraph::DESCENDANTS))
             {
+				double tEnd= getTime(); 
+				dprint("%s times: read dataset %3dms, replaceNeighbors %3dms, overall %3dms\n", 
+					   getName().c_str(), int((tRead-tStart)*1000), int((tEnd-tRead)*1000), int((tEnd-tStart)*1000));
                 cliSuccess("\n");
                 return CMD_SUCCESS;
             }
@@ -1938,7 +2012,7 @@ class ccGetMeta: public CliCommand_RTVoid
                 return CMD_FAILURE;
             }
 
-            CoreCli::MetaMap::iterator it= cli->meta.find(words[1]);
+            MetaMap::iterator it= cli->meta.find(words[1]);
             if(it==cli->meta.end())
             {
                 cliFailure(_("no such variable '%s'.\n"), words[1].c_str());
@@ -2039,7 +2113,7 @@ class ccDumpGraph: public CliCommand_RTVoid
             }
 			
 			string error;
-			if(!graph->serialize(words[1].c_str(), error))
+			if(!graph->serialize(cli->meta, words[1].c_str(), error))
 			{
 				cliFailure("'%s'\n", error.c_str());
 				return CMD_FAILURE;
@@ -2070,9 +2144,9 @@ class ccLoadGraph: public CliCommand_RTVoid
             }
 
 			string error;
-			if(!graph->deserialize(words[1].c_str(), error))
+			if(!graph->deserialize(cli->meta, words[1].c_str(), error))
 			{
-				cliFailure("'%s'\n", error.c_str());
+				cliFailure( _("BDigraph::deserialize failed with error: %s\n"), error.c_str() );
 				return CMD_FAILURE;
 			}
 

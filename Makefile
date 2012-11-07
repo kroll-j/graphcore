@@ -1,6 +1,10 @@
 CCFLAGS=-Wall -std=c++0x -ggdb
 LDFLAGS=-lpthread -lreadline
 
+ifeq ($(STDERR_DEBUGGING),1)
+	CCFLAGS+=-DSTDERR_DEBUGGING
+endif
+
 all: 		Release Debug
 
 Release:	graphcore
