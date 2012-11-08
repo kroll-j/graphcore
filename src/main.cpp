@@ -61,11 +61,11 @@
 #define REPLACENEIGHBORS_MARKRM
 
 
-// print debugging and other info to stderr. enable with make option STDERR_DEBUGGING=1.
+// print debugging and other info to stderr. enable with 'make STDERR_DEBUGGING=1'.
 #ifdef STDERR_DEBUGGING
 #define dprint dodprint
 #else
-#define dprint
+#define dprint(x...)
 #endif
 
 
@@ -198,8 +198,10 @@ template<typename arc=BasicArc> class Digraph
 			metaVars.clear();
 			char metaName[64], metaVal[64];
 			while(fscanf(f, "META: %s = %s\n", metaName, metaVal)==2)
-				dprint("load meta: %s = %s\n", metaName,metaVal),
+			{
+				dprint("load meta: %s = %s\n", metaName, metaVal);
 				metaVars[metaName]= metaVal;
+			}
 			
 			clear();
 			size_t i;
@@ -207,10 +209,10 @@ template<typename arc=BasicArc> class Digraph
 			for(i= 0; i<newsize; i++)
 			{
 				if(!a.deserialize(f))
-				{ error= strerror(errno); fclose(f); resort(); return false; }
+				{ error= strerror(errno); fclose(f); resort(0,0); return false; }
 				addArc(a, false);
 			}
-			resort();
+			resort(0,0);
 			fclose(f);
 			return true;
 		}
@@ -222,7 +224,7 @@ template<typename arc=BasicArc> class Digraph
             if(lb!=arcsByHead.begin()+sortedSize && *lb==a) return;
             arcsByHead.push_back(a);
             arcsByTail.push_back(a);
-            if(doSort) resort(arcsByHead.size()-1);
+            if(doSort) resort(size()-1, size()-1);
         }
 
         // add an arc to the graph
@@ -240,10 +242,13 @@ template<typename arc=BasicArc> class Digraph
         }
 
         // re-sort arcs starting with given index
-        void resort(uint32_t begin= 0)
+        void resort(uint32_t beginTail, uint32_t beginHead)
         {
-            threadedSort(begin);
+			dprint("resort: old size %zu, tail %+zd, head %+zd\n", size(), size()-beginTail, size()-beginHead);
+            volatile double tStart= getTime();
+			threadedSort(beginTail, beginHead);
             sortedSize= size();
+			dprint("resort: new size %zu, time %3.0fms\n", size(), (getTime()-tStart)*1000);
         }
 
         // return number of arcs in graph
@@ -414,6 +419,25 @@ template<typename arc=BasicArc> class Digraph
             if(found) sortedSize--;
             return found;
         }
+		
+		// todo: make private
+		struct ArcIndices { uint32_t byHead; uint32_t byTail; };
+		ArcIndices findArcIndices(const arc& value)
+		{
+			auto findArc= [&](ArcContainer& arcs, bool(*compFn)(arc,arc)) -> ssize_t
+            {
+                ArcContainerIterator it= lower_bound(arcs.begin(), arcs.end(), 
+                    value, compFn);
+                if( it!=arcs.end() && *it==value )
+                    return it-arcs.begin();
+                return -1;
+            };
+            
+			ArcIndices ret;
+            ret.byHead= findArc(arcsByHead, compByHead);
+			ret.byTail= findArc(arcsByTail, compByTail);
+            return ret;
+		}
 
         // queue an arc for removal. returns true if the arc was found and successfully queued.
         // call this for all arcs to be removed, 
@@ -429,33 +453,27 @@ template<typename arc=BasicArc> class Digraph
             // we can't just mark the arcs with a special value here (such as the highest possible 
             // integer for both tail and head) because that would break the container's ordering.
             // so, we first queue the indices of arcs to be removed.
-            auto findArc= [&](ArcContainer& arcs, bool(*compFn)(arc,arc)) -> ssize_t
-            {
-                ArcContainerIterator it= lower_bound(arcs.begin(), arcs.end(), 
-                    value, compFn);
-                if( it!=arcs.end() && *it==value )
-                    return it-arcs.begin();
-                return -1;
-            };
+
+			ArcIndices i= findArcIndices(value);
             
-            ssize_t bh= findArc(arcsByHead, compByHead), bt= findArc(arcsByTail, compByTail);
-            if(bh<0||bt<0) return false;
-            
-            arcRemovalQueueBH.push_back(bh);
-            arcRemovalQueueBT.push_back(bt);
+			// (todo merge into one queue)
+            arcRemovalQueueBH.push_back(i.byHead);
+            arcRemovalQueueBT.push_back(i.byTail);
             
             return true;
         }
         
-        int removeQueuedArcs(size_t minResortIdx= arc::NODE_MAX)
+        int removeQueuedArcs(size_t minResortTail= arc::NODE_MAX, size_t minResortHead= arc::NODE_MAX)
         {
             arc markVal(arc::NODE_MAX, arc::NODE_MAX);
             auto mark= [&](ArcContainer& arcs, deque<size_t>& q) -> size_t
             {
                 size_t minIdx= arcs.size();
                 while(q.size())
+//				for(deque<size_t>::iterator it= q.begin(); it!=q.end(); it++)
                 {
                     size_t idx= q.front();
+//					size_t idx= *it;
                     if(idx<minIdx) minIdx= idx;
                     arcs[idx]= markVal;
                     q.pop_front();
@@ -465,11 +483,11 @@ template<typename arc=BasicArc> class Digraph
             
             size_t oldSize= size();
             // now mark all arcs queued for removal
-            minResortIdx= mark(arcsByHead, arcRemovalQueueBH);
-            minResortIdx= min(minResortIdx, mark(arcsByTail, arcRemovalQueueBT));
+            minResortHead= min(minResortHead, mark(arcsByHead, arcRemovalQueueBH));
+            minResortTail= min(minResortTail, mark(arcsByTail, arcRemovalQueueBT));
             // sort, so that marked arcs end up at containers' ends
             // only sort values from the smallest index of all removed arcs
-            resort(minResortIdx);
+            resort(minResortTail, minResortHead);
             // resort also took care of removing all marked arcs because they are duplicates --
             // except the last one
             if(arcsByHead.size() && arcsByHead.back()==markVal) arcsByHead.pop_back();
@@ -478,7 +496,7 @@ template<typename arc=BasicArc> class Digraph
             return oldSize-size();
         }
 	
-#define REPLACENEIGHBORSTEST1 1	// WiP
+//#define REPLACENEIGHBORSTEST1 1	// WiP
 
 #if OLDREPLACENEIGHBORS
         // replace predecessors (successors=false) or descendants (successors=true) of a node
@@ -522,20 +540,26 @@ template<typename arc=BasicArc> class Digraph
 #elif REPLACENEIGHBORSTEST1
 
         // replace predecessors (successors=false) or descendants (successors=true) of a node
-        bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
+        bool replaceNeighbors(uint32_t node, vector<uint32_t>& newNeighbors, bool successors)
         {
+			volatile double tStart= getTime();
+
             NeighborIterator it(*this);
             if(successors) it.startDescendants(node);
             else it.startPredecessors(node);
-
+			
             // remove old neighbors of node
             while(!it.checkFinished())
             {
                 queueArcForRemoval(it.getArc().tail, it.getArc().head);
                 ++it;
             }
+			
+			volatile double tQueueRemove= getTime();
             
             removeQueuedArcs();
+			
+			volatile double tRemove= getTime();
 
             // add new neighbors and resort.
             vector<uint32_t>::iterator p;
@@ -545,8 +569,17 @@ template<typename arc=BasicArc> class Digraph
                 if(successors) addArc(node, *p, false);
                 else addArc(*p, node, false);
             }
+			
+			volatile double tAdd= getTime();
+			
             resort(oldSize);
             sortedSize= size();
+			
+			volatile double tResort= getTime();
+			
+			dprint("queue: %3.0fms remove: %3.0fms add: %3.0fms resort: %3.0fms overall: %3.0fms\n",
+				   (tQueueRemove-tStart)*1000, (tRemove-tQueueRemove)*1000, (tAdd-tRemove)*1000, (tResort-tAdd)*1000, (tResort-tStart)*1000);
+			
             return true;
             
             // todo:
@@ -556,7 +589,8 @@ template<typename arc=BasicArc> class Digraph
             // manage sorter threads better
         }
 
-#else 
+#else 	// newest method,
+		// needs testing
 
         // replace predecessors (successors=false) or descendants (successors=true) of a node
         bool replaceNeighbors(uint32_t node, vector<uint32_t> newNeighbors, bool successors)
@@ -565,49 +599,100 @@ template<typename arc=BasicArc> class Digraph
             if(successors) it.startDescendants(node);
             else it.startPredecessors(node);
             
-            struct indices { uint32_t bytail; uint32_t byhead; };
-            deque< indices > oldIndices;
-
+            deque<ArcIndices> oldIndices;
+			
             while(!it.checkFinished())
             {
                 //~ queueArcForRemoval(it.getArc().tail, it.getArc().head);
                 // todo: get internal index from NeighborIterator
-                uint32_t tail= findArcByTail(it.getArc().tail)-arcsByTail.begin(), 
-                         head= findArcByHead(it.getArc().head)-arcsByHead.begin();
-                oldIndices.push_back( indices { tail, head } );
+				ArcIndices ind= findArcIndices(it.getArc());
+				if(ind.byHead==BasicArc::NODE_MAX || ind.byTail==BasicArc::NODE_MAX)
+					dprint("arc (%d,%d): byHead=%d, byTail=%d!\n", it.getArc().tail,it.getArc().head, ind.byHead,ind.byTail);
+                oldIndices.push_back(ind);
                 ++it;
             }
+			
+			dprint("oldIndices size: %d\nnewNeighbors size: %d\n", oldIndices.size(), newNeighbors.size());
+
+			uint32_t minSortIdxTail= BasicArc::NODE_MAX;
+			uint32_t minSortIdxHead= BasicArc::NODE_MAX;
             
-            // while oldIndices and newNeighbors left:
-            //  replace oldIndices front with newNeighbors[i]
-            //  oldIndices.pop_front()
-            //  i++
+			// replace common neighbors
+            // while oldIndices left and newNeighbors left:
+            //  replace oldIndices[idx] with newNeighbors[idx]
+            //  idx++
+			typename deque<ArcIndices>::iterator i_oldind= oldIndices.begin();
+			vector<uint32_t>::iterator i_neighbor= newNeighbors.begin();
+			for(; 
+				i_oldind!=oldIndices.end() && i_neighbor!=newNeighbors.end(); 
+				i_oldind++, i_neighbor++)
+			{
+				volatile ArcIndices ind= *i_oldind;
+				uint32_t newNeighbor= *i_neighbor;
+				// XXX check whether neighbors differ
+				if(ind.byHead<minSortIdxHead) minSortIdxHead= ind.byHead;
+				if(ind.byTail<minSortIdxTail) minSortIdxTail= ind.byTail;
+				if(successors)
+				{
+					arcsByHead[ind.byHead].head= newNeighbor;
+					arcsByTail[ind.byTail].head= newNeighbor;
+				}
+				else
+				{
+					arcsByHead[ind.byHead].tail= newNeighbor;
+					arcsByTail[ind.byTail].tail= newNeighbor;
+				}
+			}
+			
             
             // case: more new neighbors than old
             // while newNeighbors left:
             //  append newNeighbors[i]
             //  i++
+			for(; i_neighbor!=newNeighbors.end(); i_neighbor++)
+			{
+				arc newArc;
+				if(successors)
+					newArc.tail= node,
+					newArc.head= *i_neighbor;
+				else
+					newArc.tail= *i_neighbor,
+					newArc.head= node;
+				addArc(newArc, false);
+			}
             
             // case: less new neighbors than old
             // while oldIndices left:
-            //  queueArcForRemoval(oldIndices front)
-            //  oldIndices.pop_front()
+            //  queueArcForRemoval(oldIndices[idx])
+			//  idx++
+			dprint("i_oldind-begin: %zd -- end-i_oldind: %zd\n", 
+				i_oldind-oldIndices.begin(), oldIndices.end()-i_oldind);
+			for(; i_oldind!=oldIndices.end(); i_oldind++)
+			{
+				arcRemovalQueueBH.push_back(i_oldind->byHead);
+				arcRemovalQueueBT.push_back(i_oldind->byTail);
+			}
+			
+			removeQueuedArcs(minSortIdxTail, minSortIdxHead);
+			
+			return true;
+			
             // 
             // removeQueuedArcs() -- does resorting - but uses wrong min idx!!
             
             //~ removeQueuedArcs();
 
-            // add new neighbors and resort.
-            vector<uint32_t>::iterator p;
-            int oldSize= arcsByHead.size();
-            for(p= newNeighbors.begin(); p!= newNeighbors.end(); p++)
-            {
-                if(successors) addArc(node, *p, false);
-                else addArc(*p, node, false);
-            }
-            resort(oldSize);
-            sortedSize= size();
-            return true;
+//            // add new neighbors and resort.
+//            vector<uint32_t>::iterator p;
+//            int oldSize= arcsByHead.size();
+//            for(p= newNeighbors.begin(); p!= newNeighbors.end(); p++)
+//            {
+//                if(successors) addArc(node, *p, false);
+//                else addArc(*p, node, false);
+//            }
+//            resort(oldSize);
+//            sortedSize= size();
+//            return true;
             
             // todo:
             // replace neighbors in-place without removing first, appending and removing the rest as necessary
@@ -901,12 +986,12 @@ template<typename arc=BasicArc> class Digraph
             return 0;
         }
         // re-sort arcs in 2 threads
-        void threadedSort(int mergeBegin)
+        void threadedSort(uint32_t mergeBeginTail, uint32_t mergeBeginHead)
         {
             pthread_t threadID;
-            sorterThreadArg arg= { arcsByHead, 0, mergeBegin, arcsByHead.size(), compByHead };
+            sorterThreadArg arg= { arcsByHead, 0, mergeBeginHead, arcsByHead.size(), compByHead };
             pthread_create(&threadID, 0, sorterThread, &arg);
-            doMerge(arcsByTail, 0, mergeBegin, arcsByTail.size(), compByTail);
+            doMerge(arcsByTail, 0, mergeBeginTail, arcsByTail.size(), compByTail);
             pthread_join(threadID, 0);
         }
         
@@ -1513,7 +1598,7 @@ class ccAddArcs: public CliCommand_RTVoid
                     if(record.size()==0)
                     {
                         if(!ok) return CMD_ERROR;
-                        graph->resort(oldSize);
+                        graph->resort(oldSize, oldSize);
                         cliSuccess("\n");
                         return CMD_SUCCESS;
                     }
@@ -1554,19 +1639,27 @@ class ccRemoveArcs: public CliCommand_RTVoid
                 syntaxError();
                 return CMD_FAILURE;
             }
+			
+			volatile double tStart= getTime();
 
             vector< vector<uint32_t> > dataset;
             if(!readNodeset(inFile, dataset, 2))
                 return CMD_FAILURE;
-
+			
+			if(dataset.size())
+			{
 #ifdef REMOVEARCS_MARKRM
-            for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
-                graph->queueArcForRemoval((*i)[0], (*i)[1]);
-            graph->removeQueuedArcs();
+				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+					graph->queueArcForRemoval((*i)[0], (*i)[1]);
+				graph->removeQueuedArcs();
 #else
-            for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
-                graph->eraseArc((*i)[0], (*i)[1]);
+				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+					graph->eraseArc((*i)[0], (*i)[1]);
 #endif
+			}
+
+			dprint("remove-arcs: %zu arcs removed in %3.0fms\n", dataset.size(), 
+				(getTime()-tStart)*1000);
 
             cliSuccess("\n");
             return CMD_SUCCESS;
@@ -1615,13 +1708,16 @@ template<BDigraph::NodeRelation searchType>
                 newNeighbors.push_back((*i)[0]);
 			
 			double tRead= getTime();
+			
+			size_t sizeBefore= graph->size();
 
             if(graph->replaceNeighbors(Cli::parseUint(words[1]), newNeighbors, 
                                         searchType==BDigraph::DESCENDANTS))
             {
 				double tEnd= getTime(); 
-				dprint("%s times: read dataset %3dms, replaceNeighbors %3dms, overall %3dms\n", 
-					   getName().c_str(), int((tRead-tStart)*1000), int((tEnd-tRead)*1000), int((tEnd-tStart)*1000));
+				dprint("%s times: %zu new neighbors, size diff %+d, read dataset %3ums, replaceNeighbors %3ums, overall %3ums\n", 
+					   getName().c_str(), newNeighbors.size(), int(graph->size()-sizeBefore), 
+					   unsigned((tRead-tStart)*1000), unsigned((tEnd-tRead)*1000), unsigned((tEnd-tStart)*1000));
                 cliSuccess("\n");
                 return CMD_SUCCESS;
             }
