@@ -1020,7 +1020,10 @@ template<typename arc=BasicArc> class Digraph
         static void doMerge(ArcContainer &arcs, int begin, int mergeBegin, int end,
                             bool (*compFunc)(arc a, arc b))
         {
+			dprint("doMerge begin=%d mergeBegin=%d end=%d\n", begin, mergeBegin, end);
+			volatile double tStart= getTime();
             stable_sort(arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
+			volatile double tSort1= getTime();
 
             unsigned numDups= 0;
             for(int i= mergeBegin; i<end-1; i++)
@@ -1057,7 +1060,14 @@ template<typename arc=BasicArc> class Digraph
 //                    numDups, begin, mergeBegin, end, arcs.size());
             }
 
+			volatile double tEraseDups= getTime();
+
             inplace_merge(arcs.begin()+begin, arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
+			volatile double tEnd= getTime();
+
+			dprint("doMerge: sort mergeBegin=>end   t=%3.0fms\n", (tSort1-tStart)*1000);
+			dprint("doMerge: erase dups:            t=%3.0fms\n", (tEraseDups-tSort1)*1000);
+			dprint("doMerge: inplace_merge:         t=%3.0fms\n", (tEnd-tEraseDups)*1000);
         }
         
         friend class ccRMStuff; // can read arc data directly for debugging.
