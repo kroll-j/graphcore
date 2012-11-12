@@ -759,12 +759,13 @@ template<typename arc=BasicArc> class Digraph
             result["MaxNodeID"]= statInfo(_("greatest node ID"), maxNodeID);
             result["NumDups"]= statInfo(_("number of duplicates found (must be zero)"), numDups);
             result["DataInvalid"]= statInfo(_("nonzero if any obvious errors were found in graph data"), invalid);
+			result["ContainerFragmentsHead"]= statInfo(_("container fragments (head)"), countContainerFragments(arcsByHead.begin(), arcsByHead.end()));
+			result["ContainerFragmentsTail"]= statInfo(_("container fragments (tail)"), countContainerFragments(arcsByTail.begin(), arcsByTail.end()));
         }
 
 
         // below is intermediate/internal testing stuff unrelated to the spec.
-
-
+	
         // check for duplicates
         void checkDups()
         {
@@ -829,7 +830,7 @@ template<typename arc=BasicArc> class Digraph
 		typedef typename ArcContainer::iterator ArcContainerIterator;
 //        typedef vector< arc > ArcContainer;
         ArcContainer arcsByTail, arcsByHead;
-        
+		
         // indices into above containers of arcs queued for removal.
         deque<size_t> arcRemovalQueueBH, arcRemovalQueueBT;
 
@@ -946,7 +947,20 @@ template<typename arc=BasicArc> class Digraph
         };
         friend class NeighborIterator;
 
-        // helper function for sorting arcs by tail
+		// count non-contiguous blocks in arc container
+		uint32_t countContainerFragments(ArcContainerIterator begin, ArcContainerIterator end)
+		{
+			uint32_t frags= 0;
+			for(ArcContainerIterator it= begin; it!=end; it++)
+			{
+				if( size_t( &(*it)- &(*(it-1)) ) != 1 )
+					frags++; 
+			}
+			return frags;
+		}
+        
+		
+		// helper function for sorting arcs by tail
         static bool compByTail(arc a, arc b)
         {
             return (a.tail==b.tail? a.head<b.head: a.tail<b.tail);
@@ -1694,7 +1708,7 @@ template<BDigraph::NodeRelation searchType>
                 return CMD_FAILURE;
             }
 
-			dprint("%s %s", getName().c_str(), words[1].c_str());
+			dprint("%s %s\n", getName().c_str(), words[1].c_str());
 			
 			double tStart= getTime();
 			
@@ -2242,7 +2256,7 @@ class ccLoadGraph: public CliCommand_RTVoid
 			string error;
 			if(!graph->deserialize(cli->meta, words[1].c_str(), error))
 			{
-				cliFailure( _("BDigraph::deserialize failed with error: %s\n"), error.c_str() );
+				cliFailure( _("BDigraph::deserialize failed with reason: %s\n"), error.c_str() );
 				return CMD_FAILURE;
 			}
 
