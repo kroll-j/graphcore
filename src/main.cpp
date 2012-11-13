@@ -1756,14 +1756,16 @@ template<BDigraph::NodeRelation searchType>
             
             uint32_t node= Cli::parseUint(words[1]);
 
-            /// xxxx
+            /// xxxx maybe put this logic into Digraph::replaceNeighbors()
             // sort new neighbors and remove any duplicates
             stable_sort(newNeighbors.begin(), newNeighbors.end());
             for(unsigned i= 1; i<newNeighbors.size(); i++)
                 if(newNeighbors[i]==newNeighbors[i-1])
-                    dprint("dup in newNeighbors: %d\n", newNeighbors[i]),
-                    newNeighbors.erase(newNeighbors.begin()+i),
+                {
+                    dprint("dup in newNeighbors: %d\n", newNeighbors[i]);
+                    newNeighbors.erase(newNeighbors.begin()+i);
                     i--;
+                }
             // find old neighbors for building diff
             vector<uint32_t> oldNeighbors;
             map<uint32_t,BDigraph::BFSnode> nodeInfo;
