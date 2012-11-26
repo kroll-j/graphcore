@@ -12,7 +12,6 @@ Debug:		graphcore.dbg
 
 graphcore:	src/main.cpp src/*.h
 		g++ $(CCFLAGS) -O3 -march=native src/main.cpp $(LDFLAGS) -ographcore
-# -O3
 
 graphcore.dbg:	src/main.cpp src/*.h
 		g++ $(CCFLAGS) -O0 -DDEBUG_COMMANDS -ggdb src/main.cpp $(LDFLAGS) -ographcore.dbg

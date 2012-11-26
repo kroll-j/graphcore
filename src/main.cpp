@@ -1160,43 +1160,51 @@ class CoreCli: public Cli
             char *command= 0;
             FILE *inRedir= 0, *outRedir= 0;
             bool commandHasDataSet;
-            while(!doQuit)
+            try
             {
-                fflush(stdout);
-                if(inRedir) fclose(inRedir), inRedir= 0;
-                if(outRedir) fclose(outRedir), outRedir= 0;
-                if( (command= getLine())==0 ) return;
-                char *completeCommand= strdup(command);
-                if(!completeCommand) { printf(ERROR_STR " out of memory.\n"); return; }
-                char *d= strchr(command, '>');
-                if(d)
+                while(!doQuit)
                 {
-                    *d++= 0;
-                    if(!(outRedir= fopen(getRedirFilename(d), "w")))
+                    fflush(stdout);
+                    if(inRedir) fclose(inRedir), inRedir= 0;
+                    if(outRedir) fclose(outRedir), outRedir= 0;
+                    if( (command= getLine())==0 ) return;
+                    char *completeCommand= strdup(command);
+                    if(!completeCommand) { printf(ERROR_STR " out of memory.\n"); return; }
+                    char *d= strchr(command, '>');
+                    if(d)
                     {
-                        printf( "%s %s", FAIL_STR, _("couldn't open output file\n") );
-                        continue;
+                        *d++= 0;
+                        if(!(outRedir= fopen(getRedirFilename(d), "w")))
+                        {
+                            printf( "%s %s", FAIL_STR, _("couldn't open output file\n") );
+                            continue;
+                        }
                     }
-                }
-                d= strchr(command, '<');
-                if(d)
-                {
-                    *d++= 0;
-                    if(!(inRedir= fopen(getRedirFilename(d), "r")))
+                    d= strchr(command, '<');
+                    if(d)
                     {
-                        printf( "%s %s", FAIL_STR, _("couldn't open input file\n") );
-                        continue;
+                        *d++= 0;
+                        if(!(inRedir= fopen(getRedirFilename(d), "r")))
+                        {
+                            printf( "%s %s", FAIL_STR, _("couldn't open input file\n") );
+                            continue;
+                        }
                     }
-                }
-                int cpos= 0;
-                if( (commandHasDataSet= lineIndicatesDataset(command, &cpos)) )
-                    command[cpos]= 0;
+                    int cpos= 0;
+                    if( (commandHasDataSet= lineIndicatesDataset(command, &cpos)) )
+                        command[cpos]= 0;
 
-                if(strlen(command))
-                    execute(command, commandHasDataSet, inRedir, outRedir),
-                    add_history(completeCommand);
-                free(command);
-                free(completeCommand);
+                    if(strlen(command))
+                        execute(command, commandHasDataSet, inRedir, outRedir),
+                        add_history(completeCommand);
+                    free(command);
+                    free(completeCommand);
+                }
+            }
+            catch(exception& ex)
+            {
+                dprint("unhandled exception: %s\nterminating.", ex.what());
+                exit(1);
             }
         }
 
