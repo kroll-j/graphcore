@@ -1807,11 +1807,11 @@ template<BDigraph::NodeRelation searchType>
                 {
                     // only neighbors added, none removed. addArc/mergesort is faster than replacing in this case.
                     if(searchType==BDigraph::PREDECESSORS)
-                        // replace predecessors
+                        // add predecessors
                         for(auto it= diffbuf+0; it!=idx_added; it++)
                             graph->addArc(*it, node, false);
                     else
-                        // replace descendants
+                        // add descendants
                         for(auto it= diffbuf+0; it!=idx_added; it++)
                             graph->addArc(node, *it, false);
                     // merge in new neighbors
