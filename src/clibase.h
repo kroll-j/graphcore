@@ -168,7 +168,7 @@ class Cli
             filterNewlines(line);    // filter out any CRLFs
             if( (n= strlen(line)) && line[n-1]=='\n' ) line[--n]= 0;    // chomp line buffer.
             vector<string> strings= splitString(line);
-            if(strlen(line) && !strings.size())
+            if(strlen(line) && strings.empty())
                 throw runtime_error(_("a non-empty string with no words (i. e. entirely made up of delimiters) is illegal in an integer record"));
                 // return false;
             for(uint32_t i= 0; i<strings.size(); i++)
@@ -184,7 +184,7 @@ class Cli
         static void readNodeIDRecord(FILE *f, vector<uint32_t> &ret)
         {
             readUintRecord(f, ret);
-            for(vector<uint32_t>::iterator i= ret.begin(); i!=ret.end(); i++)
+            for(vector<uint32_t>::iterator i= ret.begin(); i!=ret.end(); ++i)
                 if(*i==0) throw runtime_error(_("node IDs must be non-zero")); //return false;
         }
 
@@ -253,9 +253,12 @@ class Cli
             if(op!=words.end())
             {
                 opstring= *op;
-                words.erase(op);
-                while(op!=words.end())
-                    words2.push_back(*op), words.erase(op);
+                for(vector<string>::iterator it= op+1; it!=words.end(); ++it)
+                    words2.push_back(*it);
+                words.erase(op, words.end());
+//                words.erase(op);
+//                while(op!=words.end())
+//                    words2.push_back(*op), words.erase(op);
                 return true;
             }
             return false;
@@ -275,7 +278,7 @@ inline bool CliCommand::readNodeset(FILE *inFile, vector< vector<uint32_t> > &da
         try
         {
             Cli::readNodeIDRecord(inFile, record);
-            if(record.size()==0)
+            if(record.empty())
             {
                 return ok;
             }

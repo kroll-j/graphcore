@@ -169,12 +169,12 @@ template<typename arc=BasicArc> class Digraph
 			if(!f) { error= strerror(errno); return false; }
 			if(fprintf(f, "%s\n%u\n", DIGRAPH_FILEDUMP_ID, size())<0)
 			{ error= strerror(errno); fclose(f); return false; }
-			for(MetaMap::const_iterator it= metaVars.begin(); it!=metaVars.end(); it++)
+			for(MetaMap::const_iterator it= metaVars.begin(); it!=metaVars.end(); ++it)
 			{
 				if(fprintf(f, "META: %s = %s\n", it->first.c_str(), it->second.c_str())<0)
 				{ error= strerror(errno); fclose(f); return false; }
 			}
-			for(ArcContainerIterator it= arcsByHead.begin(); it!=arcsByHead.end(); it++)
+			for(ArcContainerIterator it= arcsByHead.begin(); it!=arcsByHead.end(); ++it)
 			{
 				if(!it->serialize(f))
 				{ error= strerror(errno); fclose(f); return false; }
@@ -272,7 +272,7 @@ template<typename arc=BasicArc> class Digraph
             niveau.insert(make_pair(startNode, 0));
             resultNodes.push_back(startNode);
             Q.push(startNode);
-            while(Q.size())
+            while(!Q.empty())
             {
                 uint32_t next= Q.front();
                 uint32_t curNiveau= niveau.find(next)->second;
@@ -383,7 +383,7 @@ template<typename arc=BasicArc> class Digraph
             {
                 uint32_t node= it->tail;
                 if(!hasPredecessor(node)) result.push_back(node);
-                while(it->tail==node && it!=arcsByTail.end()) it++;
+                while(it->tail==node && it!=arcsByTail.end()) ++it;
             }
         }
 
@@ -394,7 +394,7 @@ template<typename arc=BasicArc> class Digraph
             {
                 uint32_t node= it->head;
                 if(!hasDescendant(node)) result.push_back(node);
-                while(it->head==node && it!=arcsByHead.end()) it++;
+                while(it->head==node && it!=arcsByHead.end()) ++it;
             }
         }
 
@@ -470,7 +470,7 @@ template<typename arc=BasicArc> class Digraph
             {
                 size_t minIdx= arcs.size();
                 while(q.size())
-//				for(deque<size_t>::iterator it= q.begin(); it!=q.end(); it++)
+//				for(deque<size_t>::iterator it= q.begin(); it!=q.end(); ++it)
                 {
                     size_t idx= q.front();
 //					size_t idx= *it;
@@ -528,7 +528,7 @@ template<typename arc=BasicArc> class Digraph
             // add new neighbors and resort.
             vector<uint32_t>::iterator p;
             int oldSize= arcsByHead.size();
-            for(p= newNeighbors.begin(); p!= newNeighbors.end(); p++)
+            for(p= newNeighbors.begin(); p!= newNeighbors.end(); ++p)
             {
                 if(successors) addArc(node, *p, false);
                 else addArc(*p, node, false);
@@ -565,7 +565,7 @@ template<typename arc=BasicArc> class Digraph
             // add new neighbors and resort.
             vector<uint32_t>::iterator p;
             int oldSize= arcsByHead.size();
-            for(p= newNeighbors.begin(); p!= newNeighbors.end(); p++)
+            for(p= newNeighbors.begin(); p!= newNeighbors.end(); ++p)
             {
                 if(successors) addArc(node, *p, false);
                 else addArc(*p, node, false);
@@ -626,7 +626,7 @@ template<typename arc=BasicArc> class Digraph
 			vector<uint32_t>::iterator i_neighbor= newNeighbors.begin();
 			for(; 
 				i_oldind!=oldIndices.end() && i_neighbor!=newNeighbors.end(); 
-				i_oldind++, i_neighbor++)
+				++i_oldind, ++i_neighbor)
 			{
 				volatile ArcIndices ind= *i_oldind;
 				uint32_t newNeighbor= *i_neighbor;
@@ -664,7 +664,7 @@ template<typename arc=BasicArc> class Digraph
             // while newNeighbors left:
             //  append newNeighbors[i]
             //  i++
-			for(; i_neighbor!=newNeighbors.end(); i_neighbor++)
+			for(; i_neighbor!=newNeighbors.end(); ++i_neighbor)
 			{
 				arc newArc;
 				if(successors)
@@ -682,7 +682,7 @@ template<typename arc=BasicArc> class Digraph
 			//  idx++
 			dprint("i_oldind-begin: %zd -- end-i_oldind: %zd\n", 
 				i_oldind-oldIndices.begin(), oldIndices.end()-i_oldind);
-			for(; i_oldind!=oldIndices.end(); i_oldind++)
+			for(; i_oldind!=oldIndices.end(); ++i_oldind)
 			{
 				arcRemovalQueueBH.push_back(i_oldind->byHead);
 				arcRemovalQueueBT.push_back(i_oldind->byTail);
@@ -759,12 +759,12 @@ template<typename arc=BasicArc> class Digraph
 
 #ifdef STATS_AVGNEIGHBORS
             size_t s= 0;
-            for(map<uint32_t,uint32_t>::iterator it= totalPredecessors.begin(); it!=totalPredecessors.end(); it++)
+            for(map<uint32_t,uint32_t>::iterator it= totalPredecessors.begin(); it!=totalPredecessors.end(); ++it)
                 s+= it->second;
             if(s) s/= totalPredecessors.size();
             result["AvgPredecessors"]= statInfo(_("average predecessors per node"), s);
             s= 0;
-            for(map<uint32_t,uint32_t>::iterator it= totalSuccessors.begin(); it!=totalSuccessors.end(); it++)
+            for(map<uint32_t,uint32_t>::iterator it= totalSuccessors.begin(); it!=totalSuccessors.end(); ++it)
                 s+= it->second;
             if(s) s/= totalSuccessors.size();
             result["AvgSuccessors"]= statInfo(_("average successors per node"), s);
@@ -966,7 +966,7 @@ template<typename arc=BasicArc> class Digraph
 		uint32_t countContainerFragments(ArcContainerIterator begin, ArcContainerIterator end)
 		{
 			uint32_t frags= 0;
-			for(ArcContainerIterator it= begin; it!=end; it++)
+			for(ArcContainerIterator it= begin; it!=end; ++it)
 			{
 				if( size_t( &(*it)- &(*(it-1)) ) != 1 )
 					frags++; 
@@ -1299,7 +1299,7 @@ class CoreCli: public Cli
                                             cout << SUCCESS_STR <<
                                                 " L: " << result.size() << " R: " << result2.size() << " -> " << end-mergeResult.begin() <<
                                                 (outRedir? "": ":") << endl;
-                                            for(vector<uint32_t>::iterator it= mergeResult.begin(); it!=end; it++)
+                                            for(vector<uint32_t>::iterator it= mergeResult.begin(); it!=end; ++it)
                                                 fprintf(outFile, "%u\n", *it);
                                             fprintf(outFile, "\n");
                                         }
@@ -1551,7 +1551,7 @@ class ccStats: public CliCommand_RTOther
             BDigraph graph;
             map<string, BDigraph::statInfo> info;
             graph.getStats(info);
-            for(map<string, BDigraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
+            for(map<string, BDigraph::statInfo>::iterator i= info.begin(); i!=info.end(); ++i)
                 s+= "\n# " + i->first + "\t" + i->second.description;
             return s;
         }
@@ -1567,7 +1567,7 @@ class ccStats: public CliCommand_RTOther
             graph->getStats(info);
             cliSuccess("%s\n", outFile==stdout? ":": "");
             cout << lastStatusMessage;
-            for(map<string, BDigraph::statInfo>::iterator i= info.begin(); i!=info.end(); i++)
+            for(map<string, BDigraph::statInfo>::iterator i= info.begin(); i!=info.end(); ++i)
                 fprintf(outFile, "%s,%zu\n", i->first.c_str(), i->second.value);
             fprintf(outFile, "\n");
             fflush(outFile);
@@ -1642,7 +1642,7 @@ class ccAddArcs: public CliCommand_RTVoid
                 try
                 {
                     Cli::readNodeIDRecord(inFile, record); 
-                    if(record.size()==0)
+                    if(record.empty())
                     {
                         if(!ok) return CMD_ERROR;
                         graph->resort(oldSize, oldSize);
@@ -1693,14 +1693,14 @@ class ccRemoveArcs: public CliCommand_RTVoid
             if(!readNodeset(inFile, dataset, 2))
                 return CMD_FAILURE;
 			
-			if(dataset.size())
+			if(!dataset.empty())
 			{
 #ifdef REMOVEARCS_MARKRM
-				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); ++i)
 					graph->queueArcForRemoval((*i)[0], (*i)[1]);
 				graph->removeQueuedArcs();
 #else
-				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
+				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); ++i)
 					graph->eraseArc((*i)[0], (*i)[1]);
 #endif
 			}
@@ -1816,11 +1816,11 @@ template<BDigraph::NodeRelation searchType>
                     // only neighbors added, none removed. addArc/mergesort is faster than replacing in this case.
                     if(searchType==BDigraph::PREDECESSORS)
                         // add predecessors
-                        for(auto it= diffbuf+0; it!=idx_added; it++)
+                        for(auto it= diffbuf+0; it!=idx_added; ++it)
                             graph->addArc(*it, node, false);
                     else
                         // add descendants
-                        for(auto it= diffbuf+0; it!=idx_added; it++)
+                        for(auto it= diffbuf+0; it!=idx_added; ++it)
                             graph->addArc(node, *it, false);
                     // merge in new neighbors
                     graph->resort(sizeBefore, sizeBefore);
@@ -2078,7 +2078,7 @@ class ccRMStuff: public CliCommand_RTVoid
                     size_t r= rand()%oldSize;
                     rmQueue.push_back(graph->arcsByHead[r]);
                 }
-                while(rmQueue.size())
+                while(!rmQueue.empty())
                 {
                     BasicArc& a= rmQueue.front();
                     rmQueue.pop_front();
@@ -2301,12 +2301,12 @@ class ccListMeta: public CliCommand_RTOther
             vector< pair<string,string> > sortedVars;
             sortedVars.reserve(cli->meta.size());
             
-            for(auto it= cli->meta.begin(); it!=cli->meta.end(); it++)
+            for(auto it= cli->meta.begin(); it!=cli->meta.end(); ++it)
                 sortedVars.push_back(*it);
             
             std::sort(sortedVars.begin(), sortedVars.end());
             
-            for(auto it= sortedVars.begin(); it!=sortedVars.end(); it++)
+            for(auto it= sortedVars.begin(); it!=sortedVars.end(); ++it)
                 cout << it->first << "," << it->second << endl;
             
             cout << endl;
