@@ -680,7 +680,12 @@ class ccRemoveArcs: public CliCommand_RTVoid
 			
 			if(!dataset.empty())
 			{
-#ifdef REMOVEARCS_MARKRM
+#if defined(REMOVEARCS_INPLACE)
+                deque<BasicArc> arcs;
+				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); ++i)
+					arcs.push_back( BasicArc{ (*i)[0], (*i)[1] } );
+                graph->eraseArcsInplace(arcs);
+#elif defined(REMOVEARCS_MARKRM)
 				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); ++i)
 					graph->queueArcForRemoval((*i)[0], (*i)[1]);
 				graph->removeQueuedArcs();
@@ -688,10 +693,11 @@ class ccRemoveArcs: public CliCommand_RTVoid
 				for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); ++i)
 					graph->eraseArc((*i)[0], (*i)[1]);
 #endif
+
+                dprint("remove-arcs: %zu arcs removed in %3.0fms\n", dataset.size(), 
+                    (getTime()-tStart)*1000);
 			}
 
-			dprint("remove-arcs: %zu arcs removed in %3.0fms\n", dataset.size(), 
-				(getTime()-tStart)*1000);
 
             cliSuccess("\n");
             return CMD_SUCCESS;
@@ -725,10 +731,8 @@ template<BDigraph::NodeRelation searchType>
                 syntaxError();
                 return CMD_FAILURE;
             }
-
-			dprint("%s %s\n", getName().c_str(), words[1].c_str());
-			
-			volatile double tStart= getTime();
+            
+            volatile double tStart= getTime();
 			
             vector<uint32_t> newNeighbors;
             vector< vector<uint32_t> > dataset;
@@ -738,8 +742,6 @@ template<BDigraph::NodeRelation searchType>
             newNeighbors.reserve(dataset.size());
             for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
                 newNeighbors.push_back((*i)[0]);
-			
-			volatile double tRead= getTime();
             
             if(!Cli::isValidNodeID(words[1])) 
             {
@@ -748,93 +750,17 @@ template<BDigraph::NodeRelation searchType>
             }
             
             uint32_t node= Cli::parseUint(words[1]);
-
-            /// xxxx maybe put this logic into Digraph::replaceNeighbors()
-            // sort new neighbors and remove any duplicates
-            stable_sort(newNeighbors.begin(), newNeighbors.end());
-            for(unsigned i= 1; i<newNeighbors.size(); i++)
-                if(newNeighbors[i]==newNeighbors[i-1])
-                {
-                    dprint("dup in newNeighbors: %d\n", newNeighbors[i]);
-                    newNeighbors.erase(newNeighbors.begin()+i);
-                    i--;
-                }
-            // find old neighbors for building diff
-            vector<uint32_t> oldNeighbors;
-            map<uint32_t,BDigraph::BFSnode> nodeInfo;
-            graph->doBFS2<BDigraph::findAll> (node, 0, 1,
-                                             oldNeighbors, nodeInfo, searchType);
-            if(oldNeighbors.size()) oldNeighbors.erase(oldNeighbors.begin());   // remove the node itself.
-            stable_sort(oldNeighbors.begin(), oldNeighbors.end());
-            // build diff:
-            uint32_t diffbuf[ oldNeighbors.size()+newNeighbors.size() ];
-            // [diffbuf+0, idx_added): newly added neighbors
-            auto idx_added= set_difference(newNeighbors.begin(),newNeighbors.end(), oldNeighbors.begin(),oldNeighbors.end(), diffbuf+0);
-            // [idx_added, idx_removed): removed neighbors
-            auto idx_removed= set_difference(oldNeighbors.begin(),oldNeighbors.end(), newNeighbors.begin(),newNeighbors.end(), idx_added);
-            dprint("%s: oldNeighbors: %zu, newNeighbors: %zu, added: %zu removed: %zu\n", 
-                getName().c_str(), oldNeighbors.size(), newNeighbors.size(), idx_added-(&diffbuf[0]), idx_removed-idx_added);
-            if(idx_added-diffbuf<20 && idx_removed-idx_added<20)
-            {
-                dprint("added: \n");
-                for(int i= 0; i<idx_added-diffbuf; i++)
-                    dprint("    %08d\n", diffbuf[i]);
-                dprint("removed: \n");
-                for(int i= idx_added-diffbuf; i<idx_removed-diffbuf; i++)
-                    dprint("    %08d\n", diffbuf[i]);
-            }
-            /// xxxx
             
-			size_t sizeBefore= graph->size();
-
-            if(idx_removed-idx_added==0)
+            if(graph->replaceNeighbors(node, newNeighbors, searchType==BDigraph::DESCENDANTS))
             {
-                if(idx_added-diffbuf==0)
-                {
-                    // nothing to do.
-                    dprint("* no diff.\n");
-                    cliSuccess("\n");
-                    return CMD_SUCCESS;
-                }
-                else
-                {
-                    // only neighbors added, none removed. addArc/mergesort is faster than replacing in this case.
-                    if(searchType==BDigraph::PREDECESSORS)
-                        // add predecessors
-                        for(auto it= diffbuf+0; it!=idx_added; ++it)
-                            graph->addArc(*it, node, false);
-                    else
-                        // add descendants
-                        for(auto it= diffbuf+0; it!=idx_added; ++it)
-                            graph->addArc(node, *it, false);
-                    // merge in new neighbors
-                    graph->resort(sizeBefore, sizeBefore);
-                    volatile double tEnd= getTime(); 
-                    dprint("%s times (add only): %zu added, read dataset %3ums, diff+add %3ums, overall %3ums\n", 
-                           getName().c_str(), idx_added-diffbuf, 
-                           unsigned((tRead-tStart)*1000), unsigned((tEnd-tRead)*1000), unsigned((tEnd-tStart)*1000));
-                    cliSuccess("\n");
-                    return CMD_SUCCESS;
-                }
+                dprint("%s %8d: %3.0fms\n", getName().c_str(), node, (getTime()-tStart)*1000);
+                cliSuccess("\n");
+                return CMD_SUCCESS;
             }
-			else
+            else
             {
-                // default: overwrite and minimum resort
-                if(graph->replaceNeighbors(node, newNeighbors, 
-                                            searchType==BDigraph::DESCENDANTS))
-                {
-                    volatile double tEnd= getTime(); 
-                    dprint("%s times: %zu new neighbors, size diff %+d, read dataset %3ums, diff+replaceNeighbors %3ums, overall %3ums\n", 
-                           getName().c_str(), newNeighbors.size(), int(graph->size()-sizeBefore), 
-                           unsigned((tRead-tStart)*1000), unsigned((tEnd-tRead)*1000), unsigned((tEnd-tStart)*1000));
-                    cliSuccess("\n");
-                    return CMD_SUCCESS;
-                }
-                else
-                {
-                    cliError(_("internal error: BDigraph::replaceNeighbors() failed.\n"));
-                    return CMD_ERROR;
-                }
+                cliError(_("internal error: BDigraph::replaceNeighbors() failed.\n"));
+                return CMD_ERROR;
             }
         }
 };
@@ -1017,7 +943,7 @@ class ccAddStuff: public CliCommand_RTVoid
                 graph->addArc(rand()%mod+1, rand()%mod+1, false);
             }
             double tEndAdd= getTime();
-            graph->resort(oldSize);
+            graph->resort(oldSize, oldSize);
             double tEnd= getTime();
             
             cliSuccess("added in %.2f sec, merged in %.2f sec\n", tEndAdd-tStart, tEnd-tEndAdd);

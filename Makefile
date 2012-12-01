@@ -1,4 +1,4 @@
-CCFLAGS=-Wall -std=c++0x -ggdb
+CCFLAGS=-Wall -Wno-unused-variable -std=c++0x -ggdb
 LDFLAGS=-lpthread -lreadline
 
 ifeq ($(STDERR_DEBUGGING),1)
