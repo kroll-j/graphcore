@@ -19,7 +19,23 @@
 
 #define DIGRAPH_FILEDUMP_ID	"GraphCoreDump-02"
 
+#ifdef USE_MMAP_POOL
+#include "mmap_pool.h"
+template<typename T>
+struct cdeque_map
+{
+    typedef std::deque<T,singlepage_std_allocator<T,QuickFixedsizeAllocator>> type;
+};
+#else
+template<typename T>
+struct cdeque_map
+{
+    typedef std::deque<T,std::allocator<T>> type;
+};
+#endif
 
+// erase items in sorted range [start,end) which appear in sorted range [eraseStart,eraseEnd)
+// returns iterator past the last item of the range
 template <typename ITERATOR>
 ITERATOR inplace_erase(ITERATOR start, ITERATOR end, ITERATOR eraseStart, ITERATOR eraseEnd)
 {
@@ -28,11 +44,10 @@ ITERATOR inplace_erase(ITERATOR start, ITERATOR end, ITERATOR eraseStart, ITERAT
              eSrc= eraseStart;
     int found= 0;
 
-    for(; src!=end; src++)
+    for(; src!=end; ++src)
     {
         if(eSrc!=eraseEnd && *src==*eSrc)
         {
-//            dprint("inplace_erase: found %u->%u\n", eSrc->tail,eSrc->head);
             ++eSrc;
         }
         else
@@ -50,7 +65,6 @@ ITERATOR inplace_erase(ITERATOR start, ITERATOR end, ITERATOR eraseStart, ITERAT
 
     return dest;
 }
-
 
 struct BasicArc
 {
@@ -87,6 +101,61 @@ struct BasicArc
 		return false;
 	}
 };
+
+#ifdef USE_MMAP_POOL
+//                 ptr, size in bytes
+typedef std::unordered_map<void*, size_t> mmapmap_t;
+static mmapmap_t& getMmapMap()
+{
+    static mmapmap_t *mmap_map;
+    if(!mmap_map) mmap_map= new mmapmap_t;
+    return *mmap_map;
+}
+static std::mutex& getMapMutex()
+{
+    static std::mutex m;
+    return m;
+}
+
+namespace std
+{
+    template<>
+    std::pair<BasicArc*, std::ptrdiff_t> get_temporary_buffer(std::ptrdiff_t count)
+    {
+        ScopedLock lock(getMapMutex());
+        size_t len= count*sizeof(BasicArc);
+        void *p= ::mmap(0, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+//        dmsg("count=%zu bytes=%zu p=%p pend=%p\n", count, len, p, (char*)p+len);
+        if(p!=(void*)-1)
+        {
+            getMmapMap()[p]= len;
+            return std::pair<BasicArc*, ptrdiff_t>((BasicArc*)p, count);
+        }
+        perror("mmap failed");
+        sleep(10);
+        return std::pair<BasicArc*, ptrdiff_t>(0, 0);
+    }
+
+    template<>
+    void return_temporary_buffer(BasicArc* p)
+    {
+        ScopedLock lock(getMapMutex());
+        mmapmap_t::iterator it= getMmapMap().find(p);
+        if(it==getMmapMap().end())
+        {
+            dmsg("%p not found\n", p);
+            return;
+        }
+        size_t len= it->second;
+//        dmsg("%p len=%zu\n", p, len);
+        if(::munmap(p, len)<0)
+            perror("munmap");
+        getMmapMap().erase(it);
+    }
+};
+
+#endif //USE_MMAP_POOL
+
 
 template<typename arc=BasicArc> class Digraph
 {
@@ -837,7 +906,8 @@ template<typename arc=BasicArc> class Digraph
 
 
     protected:
-        typedef deque< arc > ArcContainer;
+//        typedef deque< arc > ArcContainer;
+        typedef typename cdeque_map<arc>::type ArcContainer;
 		typedef typename ArcContainer::iterator ArcContainerIterator;
 //        typedef vector< arc > ArcContainer;
         ArcContainer arcsByTail, arcsByHead;
@@ -1033,7 +1103,7 @@ template<typename arc=BasicArc> class Digraph
         {
 			dprint("doMerge begin=%d mergeBegin=%d end=%d\n", begin, mergeBegin, end);
 			volatile double tStart= getTime();
-            stable_sort(arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
+            std::stable_sort(arcs.begin()+mergeBegin, arcs.begin()+end, compFunc);
 			volatile double tSort1= getTime();
 
             unsigned numDups= 0;

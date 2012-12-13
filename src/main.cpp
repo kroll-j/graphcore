@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#define _GLIBCXX_DEQUE_BUF_SIZE SYSTEMPAGESIZE
 #include <cstring>
 #include <cstdarg>
 #include <cstdio>
@@ -41,6 +42,7 @@
 #include <malloc.h>
 #endif
 
+#include "utils.h"
 #include "clibase.h"
 #include "main.h"
 #include "digraph.h"
@@ -188,7 +190,7 @@ class CoreCli: public Cli
             }
             catch(exception& ex)
             {
-                dprint("unhandled exception: %s\nterminating.", ex.what());
+                dprint("unhandled exception: %s\nterminating.\n", ex.what());
                 exit(1);
             }
         }
@@ -384,16 +386,9 @@ template<BDigraph::NodeRelation searchType, bool recursive>
                 return CMD_FAILURE;
             }
             double d= getTime();
-            #if 1
             map<uint32_t,BDigraph::BFSnode> nodeInfo;
             graph->doBFS2<BDigraph::findAll> (Cli::parseUint(words[1]), 0, (recursive? Cli::parseUint(words[2]): 1),
                                              result, nodeInfo, searchType);
-            #else
-            map<uint32_t,uint32_t> nodeNiveau;
-            graph->doBFS(result, nodeNiveau, Cli::parseUint(words[1]),
-                         (recursive? Cli::parseUint(words[2]): 1),
-                         searchType);
-            #endif
             if(!recursive && result.size()) result.erase(result.begin());
             if(recursive && !result.size())
             {
@@ -578,49 +573,11 @@ class ccAddArcs: public CliCommand_RTVoid
                 return CMD_FAILURE;
             }
 
-/*
-            uint32_t oldSize= graph->size();
-            vector< vector<uint32_t> > dataset;
-            if(!readNodeset(inFile, dataset, 2))
-                return CMD_FAILURE;
-
-            for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
-                graph->addArc((*i)[0], (*i)[1], false);
-            graph->resort(oldSize);
-*/
-
             uint32_t oldSize= graph->size();
             vector<uint32_t> record;
             bool ok= true;
             cliSuccess("\n");
-/*
-            for(unsigned lineno= 1; ; lineno++)
-            {
-                record.clear();
-                if( !Cli::readNodeIDRecord(inFile, record) )
-                {
-                    if(ok) cliError(_("error reading data set. strerror(): '%s' (line %u)\n"), strerror(errno), lineno);
-                    ok= false;
-                }
-                else if(record.size()==0)
-                {
-                    if(!ok) return CMD_ERROR;
-                    graph->resort(oldSize);
-                    cliSuccess("\n");
-                    return CMD_SUCCESS;
-                }
-                else if(record.size()!=2)
-                {
-                    if(ok) cliError(_("error reading data set: record size %d, should be 2. (line %u)\n"), record.size(), lineno);
-                    ok= false;
-                }
-                else
-                {
-                    if(record[0]==0 || record[1]==0) { cliError(_("invalid node ID in line %d\n"), lineno); ok= false; }
-                    if(ok) graph->addArc(record[0], record[1], false);
-                }
-            }
-*/
+
             for(unsigned lineno= 1; ; lineno++)
             {
                 record.clear();
@@ -1316,6 +1273,8 @@ int main()
     setlocale(LC_ALL, "");
     bindtextdomain("graphcore", "./messages");
     textdomain("graphcore");
+    
+    setbuf(stderr, 0);
 
     BDigraph graph;
     CoreCli cli(&graph);

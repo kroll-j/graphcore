@@ -1,8 +1,12 @@
-CCFLAGS=-Wall -Wstrict-overflow=3 -Wno-unused-variable -std=c++0x -ggdb
+CCFLAGS=-Wall -Wstrict-overflow=3 -Wno-unused-variable -std=c++0x -ggdb -DSYSTEMPAGESIZE=$(shell getconf PAGESIZE)
 LDFLAGS=-lpthread -lreadline
 
 ifeq ($(STDERR_DEBUGGING),1)
 	CCFLAGS+=-DSTDERR_DEBUGGING
+endif
+
+ifeq ($(USE_MMAP_POOL),1)
+	CCFLAGS+=-DUSE_MMAP_POOL
 endif
 
 all: 		Release Debug
