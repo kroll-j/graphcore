@@ -132,7 +132,7 @@ namespace std
             return std::pair<BasicArc*, ptrdiff_t>((BasicArc*)p, count);
         }
         perror("mmap failed");
-        sleep(10);
+//        sleep(10);
         return std::pair<BasicArc*, ptrdiff_t>(0, 0);
     }
 
