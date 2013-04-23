@@ -151,9 +151,6 @@ class CoreCli: public Cli
             {
                 while(!doQuit)
                 {
-                    fflush(stdout);
-                    if(inRedir) fclose(inRedir), inRedir= 0;
-                    if(outRedir) fclose(outRedir), outRedir= 0;
                     if( (command= getLine())==0 ) return;
                     char *completeCommand= strdup(command);
                     if(!completeCommand) { printf(ERROR_STR " out of memory.\n"); return; }
@@ -186,6 +183,9 @@ class CoreCli: public Cli
                         add_history(completeCommand);
                     free(command);
                     free(completeCommand);
+                    fflush(stdout);
+                    if(inRedir) fclose(inRedir), inRedir= 0;
+                    if(outRedir) fclose(outRedir), outRedir= 0;
                 }
             }
             catch(exception& ex)

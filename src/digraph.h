@@ -839,8 +839,8 @@ template<typename arc=BasicArc> class Digraph
             result["MaxNodeID"]= statInfo(_("greatest node ID"), maxNodeID);
             result["NumDups"]= statInfo(_("number of duplicates found (must be zero)"), numDups);
             result["DataInvalid"]= statInfo(_("nonzero if any obvious errors were found in graph data"), invalid);
-			result["ContainerFragmentsHead"]= statInfo(_("container fragments (head)"), countContainerFragments(arcsByHead.begin(), arcsByHead.end()));
-			result["ContainerFragmentsTail"]= statInfo(_("container fragments (tail)"), countContainerFragments(arcsByTail.begin(), arcsByTail.end()));
+			result["ContainerFragmentsHead"]= statInfo(_("non-contiguous memory blocks in arc container (head)"), countContainerFragments(arcsByHead.begin(), arcsByHead.end()));
+			result["ContainerFragmentsTail"]= statInfo(_("non-contiguous memory blocks in arc container (tail)"), countContainerFragments(arcsByTail.begin(), arcsByTail.end()));
         }
 
 
