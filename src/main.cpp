@@ -112,7 +112,7 @@ class CliCommand_RTNodeList: public CoreCliCommand
     public:
         ReturnType getReturnType() { return RT_NODE_LIST; }
         virtual CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
-                             vector<uint32_t> &result)= 0;
+                             deque<uint32_t> &result)= 0;
 };
 
 // cli commands which return an arc list data set.
@@ -121,7 +121,7 @@ class CliCommand_RTArcList: public CoreCliCommand
     public:
         ReturnType getReturnType() { return RT_ARC_LIST; }
         virtual CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
-                                      vector<BasicArc> &result)= 0;
+                                      deque<BasicArc> &result)= 0;
 };
 
 // cli commands which return some other data set. execute() must print the result to outFile.
@@ -241,7 +241,7 @@ class CoreCli: public Cli
                     {
                         case CliCommand::RT_NODE_LIST:
                         {
-                            vector<uint32_t> result;
+                            deque<uint32_t> result;
                             status= ((CliCommand_RTNodeList*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile, result);
                             if(!opstring.empty())
                             {
@@ -253,7 +253,7 @@ class CoreCli: public Cli
                                     { printf("%s %s '%s'.\n", FAIL_STR, _("no such command"), words2[0].c_str()); break; }
                                     if(cmd2->getReturnType()!=cmd->getReturnType())
                                     { printf("%s %s.\n", FAIL_STR, _("return type mismatch")); break; }
-                                    vector<uint32_t> result2;
+                                    deque<uint32_t> result2;
                                     CommandStatus status2=
                                         ((CliCommand_RTNodeList*)cmd2)->execute(words2, this, myGraph, hasDataSet, inFile, outFile, result2);
                                     if(status2==CMD_SUCCESS||status2==CMD_NONE)
@@ -309,7 +309,7 @@ class CoreCli: public Cli
                         }
                         case CliCommand::RT_ARC_LIST:
                         {
-                            vector<BasicArc> result;
+                            deque<BasicArc> result;
                             status= ((CliCommand_RTArcList*)cmd)->execute(words, this, myGraph, hasDataSet, inFile, outFile, result);
                             cout << cmd->getStatusMessage();
                             if(status==CMD_SUCCESS)
@@ -377,7 +377,7 @@ template<BDigraph::NodeRelation searchType, bool recursive>
         }
 
         CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
-                     vector<uint32_t> &result)
+                     deque<uint32_t> &result)
         {
             if( (words.size()!=(recursive? 3: 2)) || hasDataSet ||
                 !Cli::isValidNodeID(words[1]) || (recursive && !Cli::isValidUint(words[2])) )
@@ -421,7 +421,7 @@ template<bool leaves>
         }
 
         CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
-                     vector<uint32_t> &result)
+                     deque<uint32_t> &result)
         {
             if( words.size()!=1 || hasDataSet )
             {
@@ -691,12 +691,12 @@ template<BDigraph::NodeRelation searchType>
             
             volatile double tStart= getTime();
 			
-            vector<uint32_t> newNeighbors;
+            deque<uint32_t> newNeighbors;
             vector< vector<uint32_t> > dataset;
 
             if(!readNodeset(inFile, dataset, 1))
                 return CMD_FAILURE;
-            newNeighbors.reserve(dataset.size());
+//            newNeighbors.reserve(dataset.size());
             for(vector< vector<uint32_t> >::iterator i= dataset.begin(); i!=dataset.end(); i++)
                 newNeighbors.push_back((*i)[0]);
             
@@ -784,7 +784,7 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                 return _("find the shortest path from node X to node Y. return data set of arcs representing the path.");
         }
 
-        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, vector<BasicArc> &result)
+        CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile, deque<BasicArc> &result)
         {
             if( hasDataSet ||
                 (findRoot? (words.size()!=2):
@@ -794,7 +794,7 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
                 syntaxError();
                 return CMD_FAILURE;
             }
-            vector<uint32_t> nodes;
+            deque<uint32_t> nodes;
             map<uint32_t,BDigraph::BFSnode> nodeInfo;
             uint32_t node;
 
@@ -808,7 +808,7 @@ template<bool findRoot> class ccFindPath: public CliCommand_RTArcList
             {
                 uint32_t next;
                 result.resize(nodeInfo[node].niveau);
-                vector<BasicArc>::iterator it= result.begin();
+                auto it= result.begin();
                 while((next= nodeInfo[node].pathNext))
                 {
                     *it++= BasicArc(node, next);
@@ -1241,6 +1241,46 @@ class ccLoadGraph: public CliCommand_RTVoid
 
             cliSuccess("\n");
             
+            return CMD_SUCCESS;
+        }
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// ccFindLoops
+// find loops in subgraph by traversing successors or predecessors
+template<bool successors= true>
+    class ccFindLoops: public CliCommand_RTArcList
+{
+    public:
+        string getSynopsis()        { return getName() + " NODE DEPTH"; }
+        string getHelpText()
+        {
+            string txt;
+            if(successors)
+                txt= _("find loops in subgraph by traversing successors of NODE with max depth DEPTH.");
+            else
+                txt= _("find loops in subgraph by traversing predecessors of NODE with max depth DEPTH.");
+            return txt + _("\nloop paths are separated by arcs with invalid node IDs: 4294967295,4294967295.\n#these invalid arcs are not part of the paths.");
+        }
+
+        CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
+                              deque<BasicArc> &result)
+        {
+            if( words.size()!=3 || hasDataSet || !(Cli::isValidNodeID(words[1])) || !(Cli::isValidUint(words[2])) )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+            uint32_t startNode= Cli::parseUint(words[1]);
+            uint32_t depth= Cli::parseUint(words[2]);
+            map<uint32_t,BDigraph::BFSnode> nodeInfo;
+            double startTime= getTime();
+            int loopCount= graph->findLoops(startNode, depth, result, nodeInfo, successors? BDigraph::DESCENDANTS: BDigraph::PREDECESSORS);
+            double time= getTime()-startTime;
+            cliSuccess("%zu nodes visited in %.2fms, %d loop(s) found in %zu edges%s\n", 
+                nodeInfo.size(), time*1000, loopCount, result.size() - (loopCount-1), 
+                outFile==stdout? ":": "");
             return CMD_SUCCESS;
         }
 };

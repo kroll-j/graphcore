@@ -312,8 +312,8 @@ template<typename arc=BasicArc> class Digraph
             uint32_t pathNext;      // next node upwards in the search tree
             BFSnode():
                 niveau(0), pathNext(0) { }
-            BFSnode(uint32_t _niveau, uint32_t pathNext_):
-                niveau(_niveau), pathNext(pathNext_) { }
+            BFSnode(uint32_t niveau_, uint32_t pathNext_):
+                niveau(niveau_), pathNext(pathNext_) { }
         };
 
         // breadth-first search
@@ -321,7 +321,7 @@ template<typename arc=BasicArc> class Digraph
         // returns the node that matched, or 0
         template<typename COMPARE>
             uint32_t doBFS2(uint32_t startNode, uint32_t compArg, uint32_t depth,
-                            vector<uint32_t> &resultNodes,
+                            deque<uint32_t> &resultNodes,
                             map<uint32_t,BFSnode> &nodeInfo,
                             NodeRelation searchType= PREDECESSORS)
         {
@@ -354,6 +354,75 @@ template<typename arc=BasicArc> class Digraph
                 }
             }
             return 0;
+        }
+
+        // find loops in a subgraph
+        // returns number of loops found
+        // todo: merge this with doBFS using visitor pattern to reduce code duplication
+        int findLoops(uint32_t startNode, uint32_t depth,
+                        deque<arc> &loopEdges,   // found backlinks
+                        map<uint32_t,BFSnode> &nodeInfo,
+                        NodeRelation searchType= PREDECESSORS /* XXXX 6only PREDECESSORS or SUCCESSORS valid here */)
+        {
+            NeighborIterator it(*this);
+            it.startNeighbors(startNode);
+            if(it.finished()) return 0;	// node does not exist
+            queue<uint32_t> Q;
+            nodeInfo[startNode]= BFSnode(0, 0);
+            Q.push(startNode);
+            int loopCount= 0;
+            while(Q.size())
+            {
+                uint32_t nextNode= Q.front();
+                uint32_t curNiveau= nodeInfo.find(nextNode)->second.niveau;
+                if(curNiveau==depth) break;
+                Q.pop();
+                it.start(nextNode, searchType);
+                for(; !it.finished(); ++it)
+                {
+                    uint32_t neighbor= *it;
+                    auto nodeFound= nodeInfo.find(neighbor);
+                    if(nodeFound==nodeInfo.end()) // if we didn't already visit this node
+                    {
+                        Q.push(neighbor);
+                        // insert this node
+                        nodeInfo[neighbor]= BFSnode(curNiveau+1, nextNode);
+                    }
+                    else    // node already visited - walk up the search tree and search for loops
+                    {
+//                        fprintf(stderr, "already visited node: %u->%u with niveau %u, curNiveau=%u\n",
+//                            nextNode, nodeFound->first, nodeFound->second.niveau, curNiveau);
+                        if(nodeFound->second.niveau < curNiveau)
+                        {
+                            // a node that lies upwards in the search tree - this could be a loop
+                            uint32_t possibleLoopPoint= nodeFound->first;
+                            uint32_t lastNeighbor= possibleLoopPoint;
+                            deque<arc> possibleLoopEdges;
+                            auto nextNodeInfo= nodeInfo.find(nextNode);
+//                            fprintf(stderr, "  *** upwards link found: %u -> %u\n", nextNode, nodeFound->first);
+                            do
+                            {
+                                BasicArc up= (searchType==PREDECESSORS? BasicArc {lastNeighbor, nextNodeInfo->first}:
+                                                                        BasicArc {nextNodeInfo->first, lastNeighbor});
+                                possibleLoopEdges.push_front( up );
+//                                fprintf(stderr, "%u -> %u\n", up.tail, up.head);
+                                if(nextNodeInfo->first==possibleLoopPoint)
+                                {
+                                    fprintf(stderr, " *** loop found\n");
+                                    if(loopEdges.size())    // insert separator edge
+                                        loopEdges.push_back( {~0,~0} );
+                                    for(auto it= possibleLoopEdges.begin(); it!=possibleLoopEdges.end(); ++it)
+                                        loopEdges.push_back(*it);
+                                    ++loopCount;
+                                    break;
+                                }
+                                lastNeighbor= nextNodeInfo->first;
+                            } while( (nextNodeInfo= nodeInfo.find(nextNodeInfo->second.pathNext)) != nodeInfo.end() );
+                        }
+                    }
+                }
+            }
+            return loopCount;
         }
 
         // does this node have any predecessors?
@@ -389,7 +458,7 @@ template<typename arc=BasicArc> class Digraph
 
 
         // find all roots/leaves in this graph
-        void findRoots(vector<uint32_t> &result)
+        void findRoots(deque<uint32_t> &result)
         {
             ArcContainerIterator it= arcsByTail.begin();
             while(it!=arcsByTail.end())
@@ -400,7 +469,7 @@ template<typename arc=BasicArc> class Digraph
             }
         }
 
-        void findLeaves(vector<uint32_t> &result)
+        void findLeaves(deque<uint32_t> &result)
         {
             ArcContainerIterator it= arcsByHead.begin();
             while(it!=arcsByHead.end())
@@ -631,7 +700,7 @@ template<typename arc=BasicArc> class Digraph
                     i--;
                 }
             // find old neighbors for building diff
-            vector<uint32_t> oldNeighbors;
+            deque<uint32_t> oldNeighbors;
             map<uint32_t,BFSnode> nodeInfo;
             doBFS2<findAll> (node, 0, 1, oldNeighbors, nodeInfo, (successors? DESCENDANTS: PREDECESSORS));
             if(oldNeighbors.size()) oldNeighbors.erase(oldNeighbors.begin());   // remove the node itself.

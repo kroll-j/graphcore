@@ -59,7 +59,9 @@ CORECOMMANDS_BEGIN
     
     CORECOMMAND("dump-graph",      		ACCESS_ADMIN,   ccDumpGraph());
     CORECOMMAND("load-graph",           ACCESS_ADMIN,   ccLoadGraph());
- 
+
+    CORECOMMAND("find-loops",           ACCESS_READ,    ccFindLoops<true>());
+
 CORECOMMANDS_END
 
 
