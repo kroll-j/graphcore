@@ -1261,7 +1261,7 @@ template<bool successors= true>
                 txt= _("find loops in subgraph by traversing successors of NODE with max depth DEPTH.");
             else
                 txt= _("find loops in subgraph by traversing predecessors of NODE with max depth DEPTH.");
-            return txt + _("\nloop paths are separated by arcs with invalid node IDs: 4294967295,4294967295.\n#these invalid arcs are not part of the paths.");
+            return txt + _("\n# loop paths are separated by arcs with invalid node IDs: 4294967295,4294967295.");
         }
 
         CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
