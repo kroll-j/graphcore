@@ -356,11 +356,11 @@ template<typename arc=BasicArc> class Digraph
             return 0;
         }
 
-        // find loops in a subgraph
-        // returns number of loops found
+        // find cycles in a subgraph
+        // returns number of cycles found
         // todo: merge this with doBFS using visitor pattern to reduce code duplication
-        int findLoops(uint32_t startNode, uint32_t depth,
-                        deque<arc> &loopEdges,   // found backlinks
+        int findCycles(uint32_t startNode, uint32_t depth,
+                        deque<arc> &cycleEdges,   // found backlinks
                         map<uint32_t,BFSnode> &nodeInfo,
                         NodeRelation searchType= PREDECESSORS /* XXXX 6only PREDECESSORS or SUCCESSORS valid here */)
         {
@@ -370,7 +370,7 @@ template<typename arc=BasicArc> class Digraph
             queue<uint32_t> Q;
             nodeInfo[startNode]= BFSnode(0, 0);
             Q.push(startNode);
-            int loopCount= 0;
+            int cycleCount= 0;
             while(Q.size())
             {
                 uint32_t nextNode= Q.front();
@@ -388,32 +388,32 @@ template<typename arc=BasicArc> class Digraph
                         // insert this node
                         nodeInfo[neighbor]= BFSnode(curNiveau+1, nextNode);
                     }
-                    else    // node already visited - walk up the search tree and search for loops
+                    else    // node already visited - walk up the search tree and search for cycles
                     {
 //                        fprintf(stderr, "already visited node: %u->%u with niveau %u, curNiveau=%u\n",
 //                            nextNode, nodeFound->first, nodeFound->second.niveau, curNiveau);
                         if(nodeFound->second.niveau < curNiveau)
                         {
-                            // a node that lies upwards in the search tree - this could be a loop
-                            uint32_t possibleLoopPoint= nodeFound->first;
-                            uint32_t lastNeighbor= possibleLoopPoint;
-                            deque<arc> possibleLoopEdges;
+                            // a node that lies upwards in the search tree - this could be a cycle
+                            uint32_t possibleCyclePoint= nodeFound->first;
+                            uint32_t lastNeighbor= possibleCyclePoint;
+                            deque<arc> possibleCycleEdges;
                             auto nextNodeInfo= nodeInfo.find(nextNode);
 //                            fprintf(stderr, "  *** upwards link found: %u -> %u\n", nextNode, nodeFound->first);
                             do
                             {
                                 BasicArc up= (searchType==PREDECESSORS? BasicArc {lastNeighbor, nextNodeInfo->first}:
                                                                         BasicArc {nextNodeInfo->first, lastNeighbor});
-                                possibleLoopEdges.push_front( up );
+                                possibleCycleEdges.push_front( up );
 //                                fprintf(stderr, "%u -> %u\n", up.tail, up.head);
-                                if(nextNodeInfo->first==possibleLoopPoint)
+                                if(nextNodeInfo->first==possibleCyclePoint)
                                 {
-                                    fprintf(stderr, " *** loop found\n");
-                                    if(loopEdges.size())    // insert separator edge
-                                        loopEdges.push_back( {~0,~0} );
-                                    for(auto it= possibleLoopEdges.begin(); it!=possibleLoopEdges.end(); ++it)
-                                        loopEdges.push_back(*it);
-                                    ++loopCount;
+                                    fprintf(stderr, " *** cycle found\n");
+                                    if(cycleEdges.size())    // insert separator edge
+                                        cycleEdges.push_back( {~0,~0} );
+                                    for(auto it= possibleCycleEdges.begin(); it!=possibleCycleEdges.end(); ++it)
+                                        cycleEdges.push_back(*it);
+                                    ++cycleCount;
                                     break;
                                 }
                                 lastNeighbor= nextNodeInfo->first;
@@ -422,7 +422,7 @@ template<typename arc=BasicArc> class Digraph
                     }
                 }
             }
-            return loopCount;
+            return cycleCount;
         }
 
         // does this node have any predecessors?

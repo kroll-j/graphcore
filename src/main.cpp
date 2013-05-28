@@ -1247,10 +1247,10 @@ class ccLoadGraph: public CliCommand_RTVoid
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-// ccFindLoops
-// find loops in subgraph by traversing successors or predecessors
+// ccFindCycles
+// find cycles in subgraph by traversing successors or predecessors
 template<bool successors= true>
-    class ccFindLoops: public CliCommand_RTArcList
+    class ccFindCycles: public CliCommand_RTArcList
 {
     public:
         string getSynopsis()        { return getName() + " NODE DEPTH"; }
@@ -1258,10 +1258,10 @@ template<bool successors= true>
         {
             string txt;
             if(successors)
-                txt= _("find loops in subgraph by traversing successors of NODE with max depth DEPTH.");
+                txt= _("find cycles in subgraph by traversing successors of NODE with max depth DEPTH.");
             else
-                txt= _("find loops in subgraph by traversing predecessors of NODE with max depth DEPTH.");
-            return txt + _("\n# loop paths are separated by arcs with invalid node IDs: 4294967295,4294967295.");
+                txt= _("find cycles in subgraph by traversing predecessors of NODE with max depth DEPTH.");
+            return txt + _("\n# cycle paths are separated by arcs with invalid node IDs: 4294967295,4294967295.");
         }
 
         CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile,
@@ -1276,10 +1276,10 @@ template<bool successors= true>
             uint32_t depth= Cli::parseUint(words[2]);
             map<uint32_t,BDigraph::BFSnode> nodeInfo;
             double startTime= getTime();
-            int loopCount= graph->findLoops(startNode, depth, result, nodeInfo, successors? BDigraph::DESCENDANTS: BDigraph::PREDECESSORS);
+            int cycleCount= graph->findCycles(startNode, depth, result, nodeInfo, successors? BDigraph::DESCENDANTS: BDigraph::PREDECESSORS);
             double time= getTime()-startTime;
-            cliSuccess("%zu nodes visited in %.2fms, %d loop(s) found in %zu edges%s\n", 
-                nodeInfo.size(), time*1000, loopCount, result.size() - (loopCount-1), 
+            cliSuccess("%zu nodes visited in %.2fms, %d cycle(s) found in %zu edges%s\n", 
+                nodeInfo.size(), time*1000, cycleCount, result.size() - (cycleCount-1), 
                 outFile==stdout? ":": "");
             return CMD_SUCCESS;
         }
