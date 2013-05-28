@@ -1279,7 +1279,7 @@ template<bool successors= true>
             int cycleCount= graph->findCycles(startNode, depth, result, nodeInfo, successors? BDigraph::DESCENDANTS: BDigraph::PREDECESSORS);
             double time= getTime()-startTime;
             cliSuccess("%zu nodes visited in %.2fms, %d cycle(s) found in %zu edges%s\n", 
-                nodeInfo.size(), time*1000, cycleCount, result.size() - (cycleCount-1), 
+                nodeInfo.size(), time*1000, cycleCount, cycleCount? result.size() - (cycleCount-1): 0, 
                 outFile==stdout? ":": "");
             return CMD_SUCCESS;
         }

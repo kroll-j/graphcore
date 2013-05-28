@@ -60,7 +60,7 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("dump-graph",      		ACCESS_ADMIN,   ccDumpGraph());
     CORECOMMAND("load-graph",           ACCESS_ADMIN,   ccLoadGraph());
 
-    CORECOMMAND("find-cycles",           ACCESS_READ,    ccFindCycles<true>());
+    CORECOMMAND("find-cycles",          ACCESS_READ,    ccFindCycles<true>());
 
 CORECOMMANDS_END
 
