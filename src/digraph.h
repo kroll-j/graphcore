@@ -359,6 +359,7 @@ template<typename arc=BasicArc> class Digraph
         // find cycles in a subgraph
         // returns number of cycles found
         // todo: merge this with doBFS using visitor pattern to reduce code duplication
+        // todo: try depth search instead
         int findCycles(uint32_t startNode, uint32_t depth,
                         deque<arc> &cycleEdges,   // found backlinks
                         map<uint32_t,BFSnode> &nodeInfo,

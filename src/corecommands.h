@@ -57,7 +57,7 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("remove-meta",          ACCESS_WRITE,   ccRemoveMeta());
     CORECOMMAND("list-meta",            ACCESS_READ,    ccListMeta());
     
-    CORECOMMAND("dump-graph",      		ACCESS_ADMIN,   ccDumpGraph());
+    CORECOMMAND("dump-graph",           ACCESS_ADMIN,   ccDumpGraph());
     CORECOMMAND("load-graph",           ACCESS_ADMIN,   ccLoadGraph());
 
     CORECOMMAND("find-cycles",          ACCESS_READ,    ccFindCycles<true>());
