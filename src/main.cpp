@@ -31,6 +31,7 @@
 #include <exception>
 #include <stdexcept>
 
+#include <unistd.h>
 #include <stdint.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -398,6 +399,65 @@ template<BDigraph::NodeRelation searchType, bool recursive>
             else
             {
                 cliSuccess(_("%zu nodes, %fs%s\n"), result.size(), getTime()-d, outFile==stdout? ":": "");
+                return CMD_SUCCESS;
+            }
+        }
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+//
+//
+template<BDigraph::NodeRelation searchType, bool recursive>
+    class ccListNeighbors_WithDepth: public CliCommand_RTOther
+{
+    public:
+        string getSynopsis()        { return getName() + _(" NODE") + (recursive? _(" DEPTH"): ""); }
+        string getHelpText()
+        {
+            if(recursive) switch(searchType)
+            {
+                case BDigraph::NEIGHBORS: return _("list NODE and its neighbors recursively up to DEPTH.");
+                case BDigraph::PREDECESSORS: return _("list NODE and its predecessors recursively up to DEPTH.");
+                case BDigraph::DESCENDANTS: return _("list NODE and its successors recursively up to DEPTH.");
+            }
+            else switch(searchType)
+            {
+                case BDigraph::NEIGHBORS: return _("list direct neighbors of NODE.");
+                case BDigraph::PREDECESSORS: return _("list direct predecessors of NODE.");
+                case BDigraph::DESCENDANTS: return _("list direct successors of NODE.");
+            }
+        }
+
+        CommandStatus execute(vector<string> words, class CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
+        {
+            if( (words.size()!=(recursive? 3: 2)) || hasDataSet ||
+                !Cli::isValidNodeID(words[1]) || (recursive && !Cli::isValidUint(words[2])) )
+            {
+                syntaxError();
+                return CMD_FAILURE;
+            }
+            double d= getTime();
+            deque<uint32_t> result;
+            map<uint32_t,BDigraph::BFSnode> nodeInfo;
+            graph->doBFS2<BDigraph::findAll> (Cli::parseUint(words[1]), 0, (recursive? Cli::parseUint(words[2]): 1),
+                                             result, nodeInfo, searchType);
+            if(!recursive && result.size()) result.erase(result.begin());
+            if(recursive && !result.size())
+            {
+                cliNone(_("Node not found.\n"));
+                return CMD_NONE;
+            }
+            else
+            {
+                cliSuccess(_("%zu nodes, %fs%s\n"), result.size(), getTime()-d, outFile==stdout? ":": "");
+                cout << lastStatusMessage;
+                for(auto i: result)
+                {
+                    printf("%u,%d\n", i, nodeInfo[i].niveau);
+                }
+                puts("");
                 return CMD_SUCCESS;
             }
         }

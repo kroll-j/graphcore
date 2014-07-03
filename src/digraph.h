@@ -66,6 +66,8 @@ ITERATOR inplace_erase(ITERATOR start, ITERATOR end, ITERATOR eraseStart, ITERAT
     return dest;
 }
 
+// inplace_insert(container c, iterator dest, iterator src, int n)
+
 struct BasicArc
 {
 	uint32_t tail, head;
@@ -411,7 +413,7 @@ template<typename arc=BasicArc> class Digraph
                                 {
                                     fprintf(stderr, " *** cycle found\n");
                                     if(cycleEdges.size())    // insert separator edge
-                                        cycleEdges.push_back( {~0,~0} );
+                                        cycleEdges.push_back( {(uint32_t)~0,(uint32_t)~0} );
                                     for(auto it= possibleCycleEdges.begin(); it!=possibleCycleEdges.end(); ++it)
                                         cycleEdges.push_back(*it);
                                     ++cycleCount;
