@@ -30,7 +30,7 @@ CORECOMMANDS_BEGIN
     CORECOMMAND("traverse-predecessors",ACCESS_READ,    ccListNeighbors<BDigraph::PREDECESSORS, true>());
     CORECOMMAND("traverse-successors",  ACCESS_READ,    ccListNeighbors<BDigraph::DESCENDANTS, true>());
     CORECOMMAND("traverse-neighbors",   ACCESS_READ,    ccListNeighbors<BDigraph::NEIGHBORS, true>());
-    CORECOMMAND("traverse-predecessors-withdepth",ACCESS_READ,    ccListNeighbors_WithDepth<BDigraph::PREDECESSORS, true>();
+    CORECOMMAND("traverse-predecessors-withdepth",ACCESS_READ,    ccListNeighbors_WithDepth<BDigraph::PREDECESSORS, true>());
     CORECOMMAND("traverse-successors-withdepth",  ACCESS_READ,    ccListNeighbors_WithDepth<BDigraph::DESCENDANTS, true>());
     CORECOMMAND("traverse-neighbors-withdepth",   ACCESS_READ,    ccListNeighbors_WithDepth<BDigraph::NEIGHBORS, true>());
     CORECOMMAND("list-predecessors",    ACCESS_READ,    ccListNeighbors<BDigraph::PREDECESSORS, false>());
