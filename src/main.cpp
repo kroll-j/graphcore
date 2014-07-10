@@ -447,6 +447,7 @@ template<BDigraph::NodeRelation searchType, bool recursive>
             if(recursive && !result.size())
             {
                 cliNone(_("Node not found.\n"));
+                cout << lastStatusMessage;
                 return CMD_NONE;
             }
             else
