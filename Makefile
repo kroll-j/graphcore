@@ -25,5 +25,5 @@ graphcore.dbg:	src/main.cpp src/*.h
 updatelang:	#
 		./update-lang.sh
 
-test:		Release Debug
-		python test/talkback.py test/graphcore.tb ./graphcore
+test:	Debug
+		python test/talkback.py test/graphcore.tb ./graphcore.dbg

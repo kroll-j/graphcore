@@ -706,7 +706,8 @@ template<typename arc=BasicArc> class Digraph
             deque<uint32_t> oldNeighbors;
             map<uint32_t,BFSnode> nodeInfo;
             doBFS2<findAll> (node, 0, 1, oldNeighbors, nodeInfo, (successors? DESCENDANTS: PREDECESSORS));
-            if(oldNeighbors.size()) oldNeighbors.erase(oldNeighbors.begin());   // remove the node itself.
+            //~ if(oldNeighbors.size()) oldNeighbors.erase(oldNeighbors.begin());   // remove the node itself.
+            //~ dprint("oldNeighbors[0]: %d\n", oldNeighbors[0]);
             stable_sort(oldNeighbors.begin(), oldNeighbors.end());
             // build diff:
             uint32_t diffbuf[ oldNeighbors.size()+newNeighbors.size() ];

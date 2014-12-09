@@ -392,6 +392,14 @@
 > 
 ~ ^OK\.(.*[^:])?$
 
+> list-by-head 0
+*
+=
+
+> list-by-tail 0
+*
+=
+
 > traverse-successors 4 2
 ~ ^NONE\.(.*[^:])?$
 

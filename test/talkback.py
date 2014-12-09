@@ -258,8 +258,8 @@ if __name__=="__main__":
 			    bufsize = 1, 
 			    universal_newlines = True,
 			    stdin = subprocess.PIPE, 
-			    stdout = subprocess.PIPE, 
-			    stderr = subprocess.STDOUT )
+			    stdout = subprocess.PIPE)
+				#, stderr = subprocess.STDOUT )
 
    t = Talkback( proc, quiet = options.quiet )      
    code = 0
