@@ -28,28 +28,29 @@ class ScopedLock    // XXX todo: might use std::lock_guard where supported
 };
 
 #ifdef __linux__
-inline std::map<std::string, std::string>
+inline std::deque<std::string>
 parse_proc_self(const char *fname)
 {
-    const char *columns[]= { "size", "resident", "share", "text", "lib", "data", "dt" };
-    std::map<std::string, std::string> ret;
+    std::deque<std::string> ret;
     std::ifstream f(fname);
-    if(f.good())
+    while(f.good())
     {
-        for(auto col: columns)
-            f >> ret[col];
+        std::string col;
+        f>>col;
+        if(!f.good()) break;
+        ret.push_back(col);
     }
     return ret;
 }
 
 inline long getRSSBytes()
 {
-    return std::stol(parse_proc_self("/proc/self/statm")["resident"]) * SYSTEMPAGESIZE;
+    return std::stol(parse_proc_self("/proc/self/stat")[23]) * SYSTEMPAGESIZE;
 }
 
 inline long getVirtBytes()
 {
-    return std::stol(parse_proc_self("/proc/self/statm")["size"]);
+    return std::stol(parse_proc_self("/proc/self/stat")[22]);
 }
 
 #else   // non-linux
