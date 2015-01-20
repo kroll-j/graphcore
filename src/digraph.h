@@ -862,10 +862,10 @@ template<typename arc=BasicArc> class Digraph
             statInfo(): description(""), value(0) { }
         };
         // calculate some statistics about this graph (for the stats command)
-        void getStats(map<string, statInfo> &result)
+        void getStats(map<string, statInfo> &result, bool quick= false)
         {
             result["ArcCount"]= statInfo(_("number of arcs"), arcsByHead.size());
-            result["ArcRamKiB"]= statInfo(_("total RAM consumed by arc data, in KiB"), arcsByHead.size()*sizeof(arc)*2/1024);
+            //~ result["ArcRamKiB"]= statInfo(_("net RAM consumed by arc data, in KiB"), arcsByHead.size()*sizeof(arc)*2/1024);
             bool invalid= false;
             uint32_t size= arcsByHead.size();
             if(size!=arcsByTail.size())
@@ -874,8 +874,15 @@ template<typename arc=BasicArc> class Digraph
                 result["SizeTail"]= statInfo(_("tail array size"), arcsByTail.size());
                 result["SizeHead"]= statInfo(_("head array size"), arcsByHead.size());
             }
+            
+            result["ProcVirt"]= statInfo(_("process virt size in KiB"), getVirtBytes()/1024);
+            result["ProcRSS"]= statInfo(_("process resident set size in KiB"), getRSSBytes()/1024);
+            
+            if(quick) return;
+            
             uint32_t numDups= 0;
             uint32_t minNodeID= U32MAX, maxNodeID= 0;
+#define STATS_AVGNEIGHBORS  // XXX can always be defined, as this is only run when quick==false?
 #ifdef STATS_AVGNEIGHBORS // calculate average successors/predecessors per node. this takes a little long.
             map<uint32_t,uint32_t> totalPredecessors;
             map<uint32_t,uint32_t> totalSuccessors;

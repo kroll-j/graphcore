@@ -588,6 +588,7 @@ class ccStats: public CliCommand_RTOther
         string getHelpText()
         {
             string s= string(_("print some statistics about the graph in the form of a name,value data set.\n")) +
+                      "# " + _("when called as 'stats q', returns only values which can be gathered quickly (eg no avg neighbor count).\n") +
                       "# " + _("names and their meanings:");
             BDigraph graph;
             map<string, BDigraph::statInfo> info;
@@ -599,13 +600,16 @@ class ccStats: public CliCommand_RTOther
 
         CommandStatus execute(vector<string> words, CoreCli *cli, BDigraph *graph, bool hasDataSet, FILE *inFile, FILE *outFile)
         {
-            if(words.size()!=1 || hasDataSet)
+            bool quick= false;
+            if(words.size()>2 || hasDataSet)
             {
                 syntaxError();
                 return CMD_FAILURE;
             }
+            if(words.size()>1 && words[1]=="q")
+                quick= true;
             map<string, BDigraph::statInfo> info;
-            graph->getStats(info);
+            graph->getStats(info, quick);
             cliSuccess("%s\n", outFile==stdout? ":": "");
             cout << lastStatusMessage;
             for(map<string, BDigraph::statInfo>::iterator i= info.begin(); i!=info.end(); ++i)
